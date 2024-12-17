@@ -49,9 +49,15 @@ pub fn main() anyerror!void {
         } else if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
             zoomLevel += mov.y * 0.1 + mov.x * 0.1;
             std.debug.print("Zoom level: {}\n", .{zoomLevel});
+        } else if (rl.isKeyDown(rl.KeyboardKey.key_s)) {
+            const mousePosition = rl.getMousePosition();
+            std.debug.print("Mouse position: {}\n", .{mousePosition});
         } else {
-            xOffset += mov.x * 0.1;
-            yOffset += mov.y * 0.1;
+            if (@abs(xOffset + mov.x * 0.1) < 1.2)
+                xOffset += mov.x * 0.1;
+
+            if (@abs(yOffset + mov.y * 0.1) < 1.5)
+                yOffset += mov.y * 0.1;
         }
 
         rl.setShaderValue(mandelbrotShader, xOffsetLoc, &xOffset, rl.ShaderUniformDataType.shader_uniform_float);
