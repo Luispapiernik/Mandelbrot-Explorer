@@ -8,19 +8,31 @@ in vec2 coord;         // Vertex position
 // uniforms
 uniform int screenWidth;
 uniform int screenHeight;
-uniform float xOffset;
-uniform float yOffset;
-uniform float zoomLevel;
+uniform float xi;
+uniform float xf;
+uniform float yi;
+uniform float yf;
 
 out vec4 finalFragColor;
 
 // TODO: Change this to be a uniform
-#define MAX_ITERATIONS 50
+#define MAX_ITERATIONS 1000
 
 int get_scape_velocity(){
-    float aspectRatio = float(screenWidth) / float(screenHeight);
-    float initial_x = aspectRatio * coord.x;
+    // This is the point we are actually calculating the scape velocity for
+    float initial_x = coord.x;
     float initial_y = coord.y;
+
+    // We need to take into account non square screens
+    if (screenHeight > screenWidth){
+        initial_x = initial_x * float(screenWidth) / float(screenHeight);
+    } else {
+        initial_y = initial_y * float(screenHeight) / float(screenWidth);
+    }
+
+    // We need to take into account the zoom and the translation
+    initial_x = xi + (xf - xi) * (initial_x + 1) / 2;
+    initial_y = yi + (yf - yi) * (initial_y + 1) / 2;
 
     float current_x = 0;
     float current_y = 0;
@@ -44,10 +56,22 @@ int get_scape_velocity(){
     return scape_velocity;
 }
 
+
 float get_smooth_scape_velocity() {
-    float aspectRatio = float(screenWidth) / float(screenHeight);
-    float initial_x = aspectRatio * coord.x + xOffset;
-    float initial_y = coord.y + yOffset;
+    // This is the point we are actually calculating the scape velocity for
+    float initial_x = coord.x;
+    float initial_y = coord.y;
+
+    // We need to take into account non square screens
+    if (screenHeight > screenWidth){
+        initial_x = initial_x * float(screenWidth) / float(screenHeight);
+    } else {
+        initial_y = initial_y * float(screenHeight) / float(screenWidth);
+    }
+
+    // We need to take into account the zoom and the translation
+    initial_x = xi + (xf - xi) * (initial_x + 1) / 2;
+    initial_y = yi + (yf - yi) * (initial_y + 1) / 2;
 
     float current_x = 0;
     float current_y = 0;
@@ -73,6 +97,6 @@ float get_smooth_scape_velocity() {
 
 void main()
 {
-    float t = get_smooth_scape_velocity() / float(MAX_ITERATIONS);
+    float t = get_scape_velocity() / float(MAX_ITERATIONS);
     finalFragColor = vec4(t, 0.0, 0.0, 1.0);
 }
