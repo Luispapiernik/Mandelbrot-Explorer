@@ -1,5 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
+const builtin = @import("builtin");
 
 pub fn main() anyerror!void {
     rl.initWindow(1000, 1000, "Mandelbrot Explorer");
@@ -7,10 +8,18 @@ pub fn main() anyerror!void {
 
     const screenWidth = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
-    std.debug.print("Screen width: {}\n", .{screenWidth});
+    std.debug.print("Screen width: {}.\n", .{screenWidth});
     std.debug.print("Screen height: {}\n", .{screenHeight});
 
-    const mandelbrotShader: rl.Shader = rl.loadShader("resources/mandelbrot.vs", "resources/mandelbrot.fs");
+    // TODO: Actually the web version works also for desktop, not changing
+    // it still because in the future we might want to use specific  features on 100
+    var vertexShaderName: ?[*:0]const u8 = "resources/mandelbrot.vs";
+    var fragmentShaderName: ?[*:0]const u8 = "resources/mandelbrot.fs";
+    if (builtin.target.isWasm()) {
+        vertexShaderName = "resources/mandelbrot_web.vs";
+        fragmentShaderName = "resources/mandelbrot_web.fs";
+    }
+    const mandelbrotShader: rl.Shader = rl.loadShader(vertexShaderName, fragmentShaderName);
     defer rl.unloadShader(mandelbrotShader);
 
     const camera = rl.Camera3D{
@@ -27,10 +36,12 @@ pub fn main() anyerror!void {
     var yf: f32 = 1;
     var centerX: f32 = 0;
     var centerY: f32 = 0;
+    var maxIterations: i32 = 100;
 
     // Shader locations
     const screenWidthLoc = rl.getShaderLocation(mandelbrotShader, "screenWidth");
     const screenHeightLoc = rl.getShaderLocation(mandelbrotShader, "screenHeight");
+    const maxIterationsLoc = rl.getShaderLocation(mandelbrotShader, "maxIterations");
     const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
     const xiLoc = rl.getShaderLocation(mandelbrotShader, "xi");
     const xfLoc = rl.getShaderLocation(mandelbrotShader, "xf");
@@ -43,6 +54,7 @@ pub fn main() anyerror!void {
     rl.setShaderValue(mandelbrotShader, yfLoc, &yf, rl.ShaderUniformDataType.shader_uniform_float);
     rl.setShaderValue(mandelbrotShader, screenWidthLoc, &screenWidth, rl.ShaderUniformDataType.shader_uniform_int);
     rl.setShaderValue(mandelbrotShader, screenHeightLoc, &screenHeight, rl.ShaderUniformDataType.shader_uniform_int);
+    rl.setShaderValue(mandelbrotShader, maxIterationsLoc, &maxIterations, rl.ShaderUniformDataType.shader_uniform_int);
     rl.setShaderValueMatrix(mandelbrotShader, mvpLoc, mvp);
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
@@ -61,6 +73,7 @@ pub fn main() anyerror!void {
             yf = 1;
             centerX = 0;
             centerY = 0;
+            maxIterations = 100;
         } else if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
             // TODO: We need a way to avoid zooming more than what precision admits
             if (@abs(mov.y) > 0 or @abs(mov.x) > 0) {
