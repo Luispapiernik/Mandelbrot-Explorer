@@ -10,7 +10,7 @@ pub fn main() anyerror!void {
     std.debug.print("Screen width: {}\n", .{screenWidth});
     std.debug.print("Screen height: {}\n", .{screenHeight});
 
-    const mandelbrotShader: rl.Shader = rl.loadShader("resources/mandelbrot_vs.fs", "resources/mandelbrot_fs.fs");
+    const mandelbrotShader: rl.Shader = rl.loadShader("resources/mandelbrot.vs", "resources/mandelbrot.fs");
     defer rl.unloadShader(mandelbrotShader);
 
     const camera = rl.Camera3D{
@@ -53,6 +53,7 @@ pub fn main() anyerror!void {
         const mouseX = (mousePosition.x - @as(f32, @floatFromInt(screenWidth)) / 2) / (@as(f32, @floatFromInt(screenWidth)) / 2);
         const mouseY = -1.0 * (mousePosition.y - @as(f32, @floatFromInt(screenHeight)) / 2) / (@as(f32, @floatFromInt(screenHeight)) / 2);
 
+        // Reset
         if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
             xi = -1;
             xf = 1;
@@ -61,6 +62,7 @@ pub fn main() anyerror!void {
             centerX = 0;
             centerY = 0;
         } else if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
+            // TODO: We need a way to avoid zooming more than what precision admits
             if (@abs(mov.y) > 0 or @abs(mov.x) > 0) {
                 const zoomFactor: f32 = if ((mov.y + mov.x) >= 0) 0.9 else 1.1;
                 const oldMouseX = xi + (xf - xi) * (mouseX + 1) / 2;
@@ -83,13 +85,17 @@ pub fn main() anyerror!void {
                 yf += oldMouseY - newMouseY;
             }
         } else {
-            const movFactor: f32 = 0.1;
-            xi += movFactor * mov.x;
-            xf += movFactor * mov.x;
-            yi += movFactor * mov.y;
-            yf += movFactor * mov.y;
-            centerX += movFactor * mov.x;
-            centerY += movFactor * mov.y;
+            const movFactor: f32 = 0.05;
+            const xMoveFactor = (xf - xi) * movFactor;
+            const yMoveFactor = (yf - yi) * movFactor;
+
+            xi += xMoveFactor * mov.x;
+            xf += xMoveFactor * mov.x;
+            centerX += xMoveFactor * mov.x;
+
+            yi += yMoveFactor * mov.y;
+            yf += yMoveFactor * mov.y;
+            centerY += yMoveFactor * mov.y;
         }
 
         rl.setShaderValue(mandelbrotShader, xiLoc, &xi, rl.ShaderUniformDataType.shader_uniform_float);

@@ -21,7 +21,7 @@ out vec4 finalFragColor;
 int get_scape_velocity(){
     // This is the point we are actually calculating the scape velocity for
     float initial_x = coord.x;
-    float initial_y = coord.y;
+    float initial_y =  coord.y;
 
     // We need to take into account non square screens
     if (screenHeight > screenWidth){
