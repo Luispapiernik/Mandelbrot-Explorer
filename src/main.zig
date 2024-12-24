@@ -2,6 +2,79 @@ const std = @import("std");
 const rl = @import("raylib");
 const builtin = @import("builtin");
 
+const Visor = struct {
+    xi: f32 = -1,
+    xf: f32 = 1,
+    yi: f32 = -1,
+    yf: f32 = 1,
+    centerX: f32 = 0,
+    centerY: f32 = 0,
+
+    xiLoc: i32,
+    xfLoc: i32,
+    yiLoc: i32,
+    yfLoc: i32,
+
+    pub fn init(mandelbrotShader: rl.Shader) Visor {
+        const xiLoc = rl.getShaderLocation(mandelbrotShader, "xi");
+        const xfLoc = rl.getShaderLocation(mandelbrotShader, "xf");
+        const yiLoc = rl.getShaderLocation(mandelbrotShader, "yi");
+        const yfLoc = rl.getShaderLocation(mandelbrotShader, "yf");
+
+        return Visor{ .xiLoc = xiLoc, .xfLoc = xfLoc, .yiLoc = yiLoc, .yfLoc = yfLoc };
+    }
+
+    pub fn reset(self: *Visor) void {
+        self.xi = -1;
+        self.xf = 1;
+        self.yi = -1;
+        self.yf = 1;
+        self.centerX = 0;
+        self.centerY = 0;
+    }
+
+    pub fn loadView(self: *Visor, mandelbrotShader: rl.Shader) void {
+        rl.setShaderValue(mandelbrotShader, self.xiLoc, &self.xi, rl.ShaderUniformDataType.shader_uniform_float);
+        rl.setShaderValue(mandelbrotShader, self.xfLoc, &self.xf, rl.ShaderUniformDataType.shader_uniform_float);
+        rl.setShaderValue(mandelbrotShader, self.yiLoc, &self.yi, rl.ShaderUniformDataType.shader_uniform_float);
+        rl.setShaderValue(mandelbrotShader, self.yfLoc, &self.yf, rl.ShaderUniformDataType.shader_uniform_float);
+    }
+
+    pub fn zoom(self: *Visor, zoomFactor: f32, fixedXCoordinate: f32, fixedYCoordinate: f32) void {
+        const fixedXCoordinateVisorSystem = self.xi + (self.xf - self.xi) * (fixedXCoordinate + 1) / 2;
+        const fixedYCoordinateVisorSystem = self.yi + (self.yf - self.yi) * (fixedYCoordinate + 1) / 2;
+
+        self.xi = (self.xi - self.centerX) * zoomFactor + self.centerX;
+        self.xf = (self.xf - self.centerX) * zoomFactor + self.centerX;
+        self.yi = (self.yi - self.centerY) * zoomFactor + self.centerY;
+        self.yf = (self.yf - self.centerY) * zoomFactor + self.centerY;
+
+        const fixedXCoordinateZoomed = self.xi + (self.xf - self.xi) * (fixedXCoordinate + 1) / 2;
+        const fixedYCoordinateZoomed = self.yi + (self.yf - self.yi) * (fixedYCoordinate + 1) / 2;
+
+        self.centerX += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
+        self.centerY += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
+
+        self.xi += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
+        self.xf += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
+        self.yi += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
+        self.yf += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
+    }
+
+    pub fn translate(self: *Visor, movFactor: rl.Vector2) void {
+        const xMoveFactor = (self.xf - self.xi) * movFactor.x;
+        const yMoveFactor = (self.yf - self.yi) * movFactor.y;
+
+        self.xi += xMoveFactor;
+        self.xf += xMoveFactor;
+        self.centerX += xMoveFactor;
+
+        self.yi += yMoveFactor;
+        self.yf += yMoveFactor;
+        self.centerY += yMoveFactor;
+    }
+};
+
 pub fn main() anyerror!void {
     rl.initWindow(1000, 1000, "Mandelbrot Explorer");
     defer rl.closeWindow();
@@ -12,7 +85,7 @@ pub fn main() anyerror!void {
     std.debug.print("Screen height: {}\n", .{screenHeight});
 
     // TODO: Actually the web version works also for desktop, not changing
-    // it still because in the future we might want to use specific  features on 100
+    // it still because in the future we might want to use specific  features on version 100
     var vertexShaderName: ?[*:0]const u8 = "resources/mandelbrot.vs";
     var fragmentShaderName: ?[*:0]const u8 = "resources/mandelbrot.fs";
     if (builtin.target.isWasm()) {
@@ -30,12 +103,8 @@ pub fn main() anyerror!void {
         .projection = rl.CameraProjection.camera_perspective,
     };
     const mvp = rl.getCameraMatrix(camera);
-    var xi: f32 = -1;
-    var xf: f32 = 1;
-    var yi: f32 = -1;
-    var yf: f32 = 1;
-    var centerX: f32 = 0;
-    var centerY: f32 = 0;
+
+    var visor = Visor.init(mandelbrotShader);
     var maxIterations: i32 = 100;
 
     // Shader locations
@@ -43,20 +112,14 @@ pub fn main() anyerror!void {
     const screenHeightLoc = rl.getShaderLocation(mandelbrotShader, "screenHeight");
     const maxIterationsLoc = rl.getShaderLocation(mandelbrotShader, "maxIterations");
     const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
-    const xiLoc = rl.getShaderLocation(mandelbrotShader, "xi");
-    const xfLoc = rl.getShaderLocation(mandelbrotShader, "xf");
-    const yiLoc = rl.getShaderLocation(mandelbrotShader, "yi");
-    const yfLoc = rl.getShaderLocation(mandelbrotShader, "yf");
 
-    rl.setShaderValue(mandelbrotShader, xiLoc, &xi, rl.ShaderUniformDataType.shader_uniform_float);
-    rl.setShaderValue(mandelbrotShader, xfLoc, &xf, rl.ShaderUniformDataType.shader_uniform_float);
-    rl.setShaderValue(mandelbrotShader, yiLoc, &yi, rl.ShaderUniformDataType.shader_uniform_float);
-    rl.setShaderValue(mandelbrotShader, yfLoc, &yf, rl.ShaderUniformDataType.shader_uniform_float);
+    visor.loadView(mandelbrotShader);
     rl.setShaderValue(mandelbrotShader, screenWidthLoc, &screenWidth, rl.ShaderUniformDataType.shader_uniform_int);
     rl.setShaderValue(mandelbrotShader, screenHeightLoc, &screenHeight, rl.ShaderUniformDataType.shader_uniform_int);
     rl.setShaderValue(mandelbrotShader, maxIterationsLoc, &maxIterations, rl.ShaderUniformDataType.shader_uniform_int);
     rl.setShaderValueMatrix(mandelbrotShader, mvpLoc, mvp);
     rl.setTargetFPS(60);
+
     while (!rl.windowShouldClose()) {
         const mov: rl.Vector2 = rl.getMouseWheelMoveV();
         const mousePosition = rl.getMousePosition();
@@ -67,54 +130,20 @@ pub fn main() anyerror!void {
 
         // Reset
         if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
-            xi = -1;
-            xf = 1;
-            yi = -1;
-            yf = 1;
-            centerX = 0;
-            centerY = 0;
+            visor.reset();
             maxIterations = 100;
         } else if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
             // TODO: We need a way to avoid zooming more than what precision admits
             if (@abs(mov.y) > 0 or @abs(mov.x) > 0) {
                 const zoomFactor: f32 = if ((mov.y + mov.x) >= 0) 0.9 else 1.1;
-                const oldMouseX = xi + (xf - xi) * (mouseX + 1) / 2;
-                const oldMouseY = yi + (yf - yi) * (mouseY + 1) / 2;
 
-                xi = (xi - centerX) * zoomFactor + centerX;
-                xf = (xf - centerX) * zoomFactor + centerX;
-                yi = (yi - centerY) * zoomFactor + centerY;
-                yf = (yf - centerY) * zoomFactor + centerY;
-
-                const newMouseX = xi + (xf - xi) * (mouseX + 1) / 2;
-                const newMouseY = yi + (yf - yi) * (mouseY + 1) / 2;
-
-                centerX += oldMouseX - newMouseX;
-                centerY += oldMouseY - newMouseY;
-
-                xi += oldMouseX - newMouseX;
-                xf += oldMouseX - newMouseX;
-                yi += oldMouseY - newMouseY;
-                yf += oldMouseY - newMouseY;
+                visor.zoom(zoomFactor, mouseX, mouseY);
             }
         } else {
-            const movFactor: f32 = 0.05;
-            const xMoveFactor = (xf - xi) * movFactor;
-            const yMoveFactor = (yf - yi) * movFactor;
-
-            xi += xMoveFactor * mov.x;
-            xf += xMoveFactor * mov.x;
-            centerX += xMoveFactor * mov.x;
-
-            yi += yMoveFactor * mov.y;
-            yf += yMoveFactor * mov.y;
-            centerY += yMoveFactor * mov.y;
+            visor.translate(rl.Vector2{ .x = mov.x * 0.05, .y = mov.y * 0.05 });
         }
 
-        rl.setShaderValue(mandelbrotShader, xiLoc, &xi, rl.ShaderUniformDataType.shader_uniform_float);
-        rl.setShaderValue(mandelbrotShader, xfLoc, &xf, rl.ShaderUniformDataType.shader_uniform_float);
-        rl.setShaderValue(mandelbrotShader, yiLoc, &yi, rl.ShaderUniformDataType.shader_uniform_float);
-        rl.setShaderValue(mandelbrotShader, yfLoc, &yf, rl.ShaderUniformDataType.shader_uniform_float);
+        visor.loadView(mandelbrotShader);
 
         // Draw
         rl.beginDrawing();
@@ -127,6 +156,9 @@ pub fn main() anyerror!void {
 
             rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.ray_white);
         }
+        rl.drawText("Prueba", 0, 0, 32, rl.Color.white);
+
+        rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.init(255, 0, 0, 100));
         rl.drawFPS(10, 10);
     }
 }
