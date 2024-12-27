@@ -1,6 +1,7 @@
 const std = @import("std");
 const rl = @import("raylib");
 const builtin = @import("builtin");
+const colorsMaps = @import("colors.zig");
 
 const GlobalSettings = struct {
     screenWidth: i32 = 1000,
@@ -154,10 +155,28 @@ pub fn main() anyerror!void {
     };
     const mvp = rl.getCameraMatrix(camera);
     const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
+    const colorsLoc = rl.getShaderLocation(mandelbrotShader, "colors");
+    const redSegmentsSizeLoc = rl.getShaderLocation(mandelbrotShader, "redSegmentsSize");
+    const greenSegmentsSizeLoc = rl.getShaderLocation(mandelbrotShader, "greenSegmentsSize");
+    const blueSegmentsSizeLoc = rl.getShaderLocation(mandelbrotShader, "blueSegmentsSize");
+
     var visor = Visor.init(mandelbrotShader);
     settings.setLocations(mandelbrotShader);
 
+    var colorMap = colorsMaps.colorMap{};
+    colorMap.writeBoneColorMap();
+
+    var colors: [30]rl.Vector3 = colorMap.toColorVector();
+
+    const redSegmentsSize: i32 = @intCast(colorMap.redSegments);
+    const greenSegmentsSize: i32 = @intCast(colorMap.greenSegments);
+    const blueSegmentsSize: i32 = @intCast(colorMap.blueSegments);
+
     rl.setShaderValueMatrix(mandelbrotShader, mvpLoc, mvp);
+    rl.setShaderValueV(mandelbrotShader, colorsLoc, &colors, rl.ShaderUniformDataType.shader_uniform_vec3, 30);
+    rl.setShaderValue(mandelbrotShader, redSegmentsSizeLoc, &redSegmentsSize, rl.ShaderUniformDataType.shader_uniform_int);
+    rl.setShaderValue(mandelbrotShader, greenSegmentsSizeLoc, &greenSegmentsSize, rl.ShaderUniformDataType.shader_uniform_int);
+    rl.setShaderValue(mandelbrotShader, blueSegmentsSizeLoc, &blueSegmentsSize, rl.ShaderUniformDataType.shader_uniform_int);
     visor.loadView(mandelbrotShader);
     settings.loadSettings(mandelbrotShader);
 

@@ -1,5 +1,17 @@
 #version 330 core
 
+#define DEFINE_INTERPOLATE_FUNCTION(N)                         \
+float interpolate_##N(float x, Segment segments[N]) {          \
+    for (int i = 0; i < N - 1; i++) {                          \
+        if (segments[i].x <= x && x <= segments[i + 1].x) {    \
+            float colorLength = segments[i + 1].iColor - segments[i].fColor; \
+            float xLength = segments[i + 1].x - segments[i].x; \
+            return segments[i].fColor + colorLength * (x - segments[i].x) / xLength; \
+        }                                                     \
+    }                                                         \
+    return segments[N - 1].fColor;                            \
+}
+
 // Inputs from the vertex shader
 in vec2 fragTexCoord;  // Texture coordinates
 in vec4 fragColor;     // Vertex color
@@ -14,8 +26,25 @@ uniform float xf;
 uniform float yi;
 uniform float yf;
 
+uniform int redSegmentsSize;
+uniform int greenSegmentsSize;
+uniform int blueSegmentsSize;
+uniform vec3 colors[30];
+
 out vec4 finalFragColor;
 
+struct Segment {
+    float x;
+    float iColor;
+    float fColor;
+};
+
+Segment[10] redSegments;
+Segment[10] greenSegments;
+Segment[10] blueSegments;
+
+// Generate interpolate functions for different sizes
+DEFINE_INTERPOLATE_FUNCTION(10)
 
 int get_scape_velocity(){
     // This is the point we are actually calculating the scape velocity for
@@ -97,5 +126,30 @@ float get_smooth_scape_velocity() {
 void main()
 {
     float t = get_scape_velocity() / float(maxIterations);
-    finalFragColor = vec4(t, 0.0, 0.0, 1.0);
+
+    // initialize red segments
+    for (int i = 0; i < redSegmentsSize; i++) {
+        redSegments[i] = Segment(colors[i].x, colors[i].y, colors[i].z);
+    }
+
+    int realIndex;
+    // initialize green segments
+    for (int i = 0; i < greenSegmentsSize; i++) {
+        realIndex = i + redSegmentsSize;
+        greenSegments[i] = Segment(colors[realIndex].x, colors[realIndex].y, colors[realIndex].z);
+    }
+
+    // initialize blue segments
+    for (int i = 0; i < blueSegmentsSize; i++) {
+        realIndex = i + redSegmentsSize + greenSegmentsSize;
+        blueSegments[i] = Segment(colors[i].x, colors[i].y, colors[i].z);
+    }
+
+    vec3 color = vec3(
+        interpolate_10(1 - t, redSegments),
+        interpolate_10(1 - t, greenSegments),
+        interpolate_10(1 - t, blueSegments)
+    );
+
+    finalFragColor = vec4(color, 1.0);
 }
