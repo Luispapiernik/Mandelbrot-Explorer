@@ -129,8 +129,101 @@ const Visor = struct {
     }
 };
 
+const ColorManager = struct {
+    colorMap: colorsMaps.colorMap,
+
+    colorsLoc: i32,
+    redSegmentsSizeLoc: i32,
+    greenSegmentsSizeLoc: i32,
+    blueSegmentsSizeLoc: i32,
+    invertColorLoc: i32,
+
+    currentColor: u8 = 0,
+    invertColor: i32 = 1,
+
+    pub fn init(shader: rl.Shader) ColorManager {
+        const colorsLoc = rl.getShaderLocation(shader, "colors");
+        const redSegmentsSizeLoc = rl.getShaderLocation(shader, "redSegmentsSize");
+        const greenSegmentsSizeLoc = rl.getShaderLocation(shader, "greenSegmentsSize");
+        const blueSegmentsSizeLoc = rl.getShaderLocation(shader, "blueSegmentsSize");
+        const invertColorLoc = rl.getShaderLocation(shader, "invertColor");
+
+        return ColorManager{
+            .colorsLoc = colorsLoc,
+            .redSegmentsSizeLoc = redSegmentsSizeLoc,
+            .greenSegmentsSizeLoc = greenSegmentsSizeLoc,
+            .blueSegmentsSizeLoc = blueSegmentsSizeLoc,
+            .invertColorLoc = invertColorLoc,
+            .colorMap = colorsMaps.colorMap{},
+        };
+    }
+
+    pub fn setColor(self: *ColorManager, option: u8, shader: rl.Shader) void {
+        switch (option) {
+            0 => self.colorMap.writeGrayColorMap(),
+            1 => self.colorMap.writeBoneColorMap(),
+            2 => self.colorMap.writeCmrColorMap(),
+            3 => self.colorMap.writeHotColorMap(),
+            4 => self.colorMap.writeHsvColorMap(),
+            5 => self.colorMap.writeJetColorMap(),
+            6 => self.colorMap.writeSpringColorMap(),
+            7 => self.colorMap.writeSummerColorMap(),
+            8 => self.colorMap.writeWinterColorMap(),
+            else => self.colorMap.writeWistiaColorMap(),
+        }
+
+        var colors: [colorsMaps.colorMap.MAX_COLOR_SEGMENTS]rl.Vector3 = self.colorMap.toColorVector();
+
+        const redSegmentsSize: i32 = @intCast(self.colorMap.redSegments);
+        const greenSegmentsSize: i32 = @intCast(self.colorMap.greenSegments);
+        const blueSegmentsSize: i32 = @intCast(self.colorMap.blueSegments);
+
+        rl.setShaderValue(
+            shader,
+            self.redSegmentsSizeLoc,
+            &redSegmentsSize,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            shader,
+            self.greenSegmentsSizeLoc,
+            &greenSegmentsSize,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            shader,
+            self.blueSegmentsSizeLoc,
+            &blueSegmentsSize,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            shader,
+            self.invertColorLoc,
+            &self.invertColor,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValueV(
+            shader,
+            self.colorsLoc,
+            &colors,
+            rl.ShaderUniformDataType.shader_uniform_vec3,
+            colorsMaps.colorMap.MAX_COLOR_SEGMENTS,
+        );
+    }
+
+    pub fn colorize(self: *ColorManager, shader: rl.Shader) void {
+        self.setColor(self.currentColor, shader);
+        self.currentColor += 1;
+        self.currentColor %= 10;
+    }
+};
+
 pub fn main() anyerror!void {
-    var settings = GlobalSettings{ .screenWidthLoc = undefined, .screenHeightLoc = undefined, .maxIterationsLoc = undefined };
+    var settings = GlobalSettings{
+        .screenWidthLoc = undefined,
+        .screenHeightLoc = undefined,
+        .maxIterationsLoc = undefined,
+    };
 
     rl.initWindow(settings.screenWidth, settings.screenHeight, settings.title);
     defer rl.closeWindow();
@@ -155,28 +248,15 @@ pub fn main() anyerror!void {
     };
     const mvp = rl.getCameraMatrix(camera);
     const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
-    const colorsLoc = rl.getShaderLocation(mandelbrotShader, "colors");
-    const redSegmentsSizeLoc = rl.getShaderLocation(mandelbrotShader, "redSegmentsSize");
-    const greenSegmentsSizeLoc = rl.getShaderLocation(mandelbrotShader, "greenSegmentsSize");
-    const blueSegmentsSizeLoc = rl.getShaderLocation(mandelbrotShader, "blueSegmentsSize");
 
     var visor = Visor.init(mandelbrotShader);
     settings.setLocations(mandelbrotShader);
 
-    var colorMap = colorsMaps.colorMap{};
-    colorMap.writeBoneColorMap();
-
-    var colors: [30]rl.Vector3 = colorMap.toColorVector();
-
-    const redSegmentsSize: i32 = @intCast(colorMap.redSegments);
-    const greenSegmentsSize: i32 = @intCast(colorMap.greenSegments);
-    const blueSegmentsSize: i32 = @intCast(colorMap.blueSegments);
+    var colorManager = ColorManager.init(mandelbrotShader);
+    colorManager.colorize(mandelbrotShader);
 
     rl.setShaderValueMatrix(mandelbrotShader, mvpLoc, mvp);
-    rl.setShaderValueV(mandelbrotShader, colorsLoc, &colors, rl.ShaderUniformDataType.shader_uniform_vec3, 30);
-    rl.setShaderValue(mandelbrotShader, redSegmentsSizeLoc, &redSegmentsSize, rl.ShaderUniformDataType.shader_uniform_int);
-    rl.setShaderValue(mandelbrotShader, greenSegmentsSizeLoc, &greenSegmentsSize, rl.ShaderUniformDataType.shader_uniform_int);
-    rl.setShaderValue(mandelbrotShader, blueSegmentsSizeLoc, &blueSegmentsSize, rl.ShaderUniformDataType.shader_uniform_int);
+
     visor.loadView(mandelbrotShader);
     settings.loadSettings(mandelbrotShader);
 
@@ -194,6 +274,11 @@ pub fn main() anyerror!void {
         if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
             visor.reset();
             settings.maxIterations = 100;
+        } else if (rl.isKeyPressed(rl.KeyboardKey.key_c)) {
+            colorManager.colorize(mandelbrotShader);
+        } else if (rl.isKeyPressed(rl.KeyboardKey.key_i)) {
+            colorManager.invertColor *= -1;
+            colorManager.setColor(colorManager.currentColor, mandelbrotShader);
         } else if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
             // TODO: We need a way to avoid zooming more than what precision admits
             if (@abs(mov.y) > 0 or @abs(mov.x) > 0) {
@@ -220,7 +305,13 @@ pub fn main() anyerror!void {
             rl.beginShaderMode(mandelbrotShader);
             defer rl.endShaderMode();
 
-            rl.drawRectangle(0, 0, settings.screenWidth, settings.screenHeight, rl.Color.ray_white);
+            rl.drawRectangle(
+                0,
+                0,
+                settings.screenWidth,
+                settings.screenHeight,
+                rl.Color.ray_white,
+            );
         }
 
         rl.drawFPS(10, 10);

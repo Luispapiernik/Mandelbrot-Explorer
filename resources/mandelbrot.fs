@@ -29,6 +29,7 @@ uniform float yf;
 uniform int redSegmentsSize;
 uniform int greenSegmentsSize;
 uniform int blueSegmentsSize;
+uniform int invertColor;
 uniform vec3 colors[30];
 
 out vec4 finalFragColor;
@@ -145,10 +146,12 @@ void main()
         blueSegments[i] = Segment(colors[i].x, colors[i].y, colors[i].z);
     }
 
+    float colorParameter = invertColor == 1 ? t : 1 - t;
+
     vec3 color = vec3(
-        interpolate_10(1 - t, redSegments),
-        interpolate_10(1 - t, greenSegments),
-        interpolate_10(1 - t, blueSegments)
+        interpolate_10(colorParameter, redSegments),
+        interpolate_10(colorParameter, greenSegments),
+        interpolate_10(colorParameter, blueSegments)
     );
 
     finalFragColor = vec4(color, 1.0);
