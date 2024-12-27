@@ -143,7 +143,7 @@ void main()
     // initialize blue segments
     for (int i = 0; i < blueSegmentsSize; i++) {
         realIndex = i + redSegmentsSize + greenSegmentsSize;
-        blueSegments[i] = Segment(colors[i].x, colors[i].y, colors[i].z);
+        blueSegments[i] = Segment(colors[realIndex].x, colors[realIndex].y, colors[realIndex].z);
     }
 
     float colorParameter = invertColor == 1 ? t : 1 - t;
