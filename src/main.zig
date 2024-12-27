@@ -2,6 +2,39 @@ const std = @import("std");
 const rl = @import("raylib");
 const builtin = @import("builtin");
 
+const GlobalSettings = struct {
+    screenWidth: i32 = 1000,
+    screenHeight: i32 = 1000,
+    maxIterations: i32 = 100,
+
+    title: [*:0]const u8 = "Mandelbrot Explorer",
+
+    screenWidthLoc: i32,
+    screenHeightLoc: i32,
+    maxIterationsLoc: i32,
+
+    pub fn setLocations(self: *GlobalSettings, mandelbrotShader: rl.Shader) void {
+        self.screenWidthLoc = rl.getShaderLocation(mandelbrotShader, "screenWidth");
+        self.screenHeightLoc = rl.getShaderLocation(mandelbrotShader, "screenHeight");
+        self.maxIterationsLoc = rl.getShaderLocation(mandelbrotShader, "maxIterations");
+    }
+
+    pub fn loadSettings(self: *GlobalSettings, mandelbrotShader: rl.Shader) void {
+        rl.setShaderValue(mandelbrotShader, self.screenWidthLoc, &self.screenWidth, rl.ShaderUniformDataType.shader_uniform_int);
+        rl.setShaderValue(mandelbrotShader, self.screenHeightLoc, &self.screenHeight, rl.ShaderUniformDataType.shader_uniform_int);
+        rl.setShaderValue(mandelbrotShader, self.maxIterationsLoc, &self.maxIterations, rl.ShaderUniformDataType.shader_uniform_int);
+    }
+
+    pub fn showFields(self: *GlobalSettings) void {
+        std.debug.print("screenWidth: {}\n", .{self.screenWidth});
+        std.debug.print("screenHeight: {}\n", .{self.screenHeight});
+        std.debug.print("maxIterations: {}\n", .{self.maxIterations});
+        std.debug.print("screenWidthLoc: {}\n", .{self.screenWidthLoc});
+        std.debug.print("screenHeightLoc: {}\n", .{self.screenHeightLoc});
+        std.debug.print("maxIterationsLoc: {}\n", .{self.maxIterationsLoc});
+    }
+};
+
 const Visor = struct {
     xi: f32 = -1,
     xf: f32 = 1,
@@ -41,13 +74,22 @@ const Visor = struct {
     }
 
     pub fn zoom(self: *Visor, zoomFactor: f32, fixedXCoordinate: f32, fixedYCoordinate: f32) void {
+        const xiCandidate = (self.xi - self.centerX) * zoomFactor + self.centerX;
+        const xfCandidate = (self.xf - self.centerX) * zoomFactor + self.centerX;
+        const yiCandidate = (self.yi - self.centerY) * zoomFactor + self.centerY;
+        const yfCandidate = (self.yf - self.centerY) * zoomFactor + self.centerY;
+
+        if (@abs(xfCandidate - xiCandidate) <= 1e-5 or @abs(yfCandidate - yiCandidate) < 1e-5) {
+            return;
+        }
+
         const fixedXCoordinateVisorSystem = self.xi + (self.xf - self.xi) * (fixedXCoordinate + 1) / 2;
         const fixedYCoordinateVisorSystem = self.yi + (self.yf - self.yi) * (fixedYCoordinate + 1) / 2;
 
-        self.xi = (self.xi - self.centerX) * zoomFactor + self.centerX;
-        self.xf = (self.xf - self.centerX) * zoomFactor + self.centerX;
-        self.yi = (self.yi - self.centerY) * zoomFactor + self.centerY;
-        self.yf = (self.yf - self.centerY) * zoomFactor + self.centerY;
+        self.xi = xiCandidate;
+        self.xf = xfCandidate;
+        self.yi = yiCandidate;
+        self.yf = yfCandidate;
 
         const fixedXCoordinateZoomed = self.xi + (self.xf - self.xi) * (fixedXCoordinate + 1) / 2;
         const fixedYCoordinateZoomed = self.yi + (self.yf - self.yi) * (fixedYCoordinate + 1) / 2;
@@ -73,16 +115,24 @@ const Visor = struct {
         self.yf += yMoveFactor;
         self.centerY += yMoveFactor;
     }
+
+    pub fn showParams(self: *Visor) void {
+        std.debug.print("xi: {}\n", .{self.xi});
+        std.debug.print("xf: {}\n", .{self.xf});
+        std.debug.print("yi: {}\n", .{self.yi});
+        std.debug.print("yf: {}\n", .{self.yf});
+        std.debug.print("centerX: {}\n", .{self.centerX});
+        std.debug.print("centerY: {}\n", .{self.centerY});
+        std.debug.print("Difference X: {}\n", .{self.xf - self.xi});
+        std.debug.print("Difference Y: {}\n", .{self.yf - self.yi});
+    }
 };
 
 pub fn main() anyerror!void {
-    rl.initWindow(1000, 1000, "Mandelbrot Explorer");
-    defer rl.closeWindow();
+    var settings = GlobalSettings{ .screenWidthLoc = undefined, .screenHeightLoc = undefined, .maxIterationsLoc = undefined };
 
-    const screenWidth = rl.getScreenWidth();
-    const screenHeight = rl.getScreenHeight();
-    std.debug.print("Screen width: {}.\n", .{screenWidth});
-    std.debug.print("Screen height: {}\n", .{screenHeight});
+    rl.initWindow(settings.screenWidth, settings.screenHeight, settings.title);
+    defer rl.closeWindow();
 
     // TODO: Actually the web version works also for desktop, not changing
     // it still because in the future we might want to use specific  features on version 100
@@ -103,21 +153,14 @@ pub fn main() anyerror!void {
         .projection = rl.CameraProjection.camera_perspective,
     };
     const mvp = rl.getCameraMatrix(camera);
-
-    var visor = Visor.init(mandelbrotShader);
-    var maxIterations: i32 = 100;
-
-    // Shader locations
-    const screenWidthLoc = rl.getShaderLocation(mandelbrotShader, "screenWidth");
-    const screenHeightLoc = rl.getShaderLocation(mandelbrotShader, "screenHeight");
-    const maxIterationsLoc = rl.getShaderLocation(mandelbrotShader, "maxIterations");
     const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
+    var visor = Visor.init(mandelbrotShader);
+    settings.setLocations(mandelbrotShader);
 
-    visor.loadView(mandelbrotShader);
-    rl.setShaderValue(mandelbrotShader, screenWidthLoc, &screenWidth, rl.ShaderUniformDataType.shader_uniform_int);
-    rl.setShaderValue(mandelbrotShader, screenHeightLoc, &screenHeight, rl.ShaderUniformDataType.shader_uniform_int);
-    rl.setShaderValue(mandelbrotShader, maxIterationsLoc, &maxIterations, rl.ShaderUniformDataType.shader_uniform_int);
     rl.setShaderValueMatrix(mandelbrotShader, mvpLoc, mvp);
+    visor.loadView(mandelbrotShader);
+    settings.loadSettings(mandelbrotShader);
+
     rl.setTargetFPS(60);
 
     while (!rl.windowShouldClose()) {
@@ -125,22 +168,26 @@ pub fn main() anyerror!void {
         const mousePosition = rl.getMousePosition();
 
         // This are the real positions
-        const mouseX = (mousePosition.x - @as(f32, @floatFromInt(screenWidth)) / 2) / (@as(f32, @floatFromInt(screenWidth)) / 2);
-        const mouseY = -1.0 * (mousePosition.y - @as(f32, @floatFromInt(screenHeight)) / 2) / (@as(f32, @floatFromInt(screenHeight)) / 2);
+        const mouseX = (mousePosition.x - @as(f32, @floatFromInt(settings.screenWidth)) / 2) / (@as(f32, @floatFromInt(settings.screenWidth)) / 2);
+        const mouseY = -1.0 * (mousePosition.y - @as(f32, @floatFromInt(settings.screenHeight)) / 2) / (@as(f32, @floatFromInt(settings.screenHeight)) / 2);
 
         // Reset
         if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
             visor.reset();
-            maxIterations = 100;
+            settings.maxIterations = 100;
         } else if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
             // TODO: We need a way to avoid zooming more than what precision admits
             if (@abs(mov.y) > 0 or @abs(mov.x) > 0) {
                 const zoomFactor: f32 = if ((mov.y + mov.x) >= 0) 0.9 else 1.1;
 
                 visor.zoom(zoomFactor, mouseX, mouseY);
+                visor.showParams();
             }
         } else {
-            visor.translate(rl.Vector2{ .x = mov.x * 0.05, .y = mov.y * 0.05 });
+            visor.translate(rl.Vector2{
+                .x = mov.x * 0.05,
+                .y = mov.y * 0.05,
+            });
         }
 
         visor.loadView(mandelbrotShader);
@@ -154,11 +201,9 @@ pub fn main() anyerror!void {
             rl.beginShaderMode(mandelbrotShader);
             defer rl.endShaderMode();
 
-            rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.ray_white);
+            rl.drawRectangle(0, 0, settings.screenWidth, settings.screenHeight, rl.Color.ray_white);
         }
-        rl.drawText("Prueba", 0, 0, 32, rl.Color.white);
 
-        rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.init(255, 0, 0, 100));
         rl.drawFPS(10, 10);
     }
 }
