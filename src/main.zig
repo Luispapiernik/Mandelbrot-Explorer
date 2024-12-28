@@ -296,6 +296,18 @@ const ColorManager = struct {
     }
 };
 
+const MandelbrotArgs = struct {
+    x: f32,
+    y: f32,
+
+    scapeVelocity: i32,
+};
+
+fn mandelbrotWorker(args: *MandelbrotArgs) void {
+    std.debug.print("Calculating scape velocity for ({}, {})\n", .{ args.x, args.y });
+    args.scapeVelocity = 31415926;
+}
+
 pub fn main() anyerror!void {
     var width: i32 = 0;
     var height: i32 = 0;
@@ -358,6 +370,33 @@ pub fn main() anyerror!void {
 
     var colorManager = ColorManager.init(mandelbrotShader);
     colorManager.setColor(0, mandelbrotShader);
+
+    // Threads
+    const numThreads = try std.Thread.getCpuCount();
+    std.log.info("Number of logical processors available: {d}", .{numThreads});
+
+    // const toInstantiate = @min(1, numThreads);
+    const toInstantiate = 1;
+    var threads: [toInstantiate]std.Thread = undefined;
+
+    var args: [toInstantiate]MandelbrotArgs = undefined;
+
+    for (0..toInstantiate) |i| {
+        args[i] = MandelbrotArgs{ .x = 0, .y = 0, .scapeVelocity = undefined };
+        threads[i] = try std.Thread.spawn(
+            std.Thread.SpawnConfig{},
+            mandelbrotWorker,
+            .{&args[i]},
+        );
+    }
+
+    for (threads) |thread| {
+        thread.join();
+    }
+
+    for (args) |arg| {
+        std.log.info("Scape velocity: {d}", .{arg.scapeVelocity});
+    }
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
