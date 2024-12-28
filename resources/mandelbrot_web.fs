@@ -23,6 +23,7 @@ uniform int redSegmentsSize;
 uniform int greenSegmentsSize;
 uniform int blueSegmentsSize;
 uniform int invertColor;
+uniform int smoothVelocity;
 uniform vec3 colors[30];
 
 struct Segment {
@@ -137,14 +138,19 @@ float get_smooth_scape_velocity() {
 
 void main()
 {
-    float t = get_smooth_scape_velocity() / float(maxIterations);
+    float t;
+    if (smoothVelocity == 1) {
+        t = get_smooth_scape_velocity() / float(maxIterations);
+    } else {
+        t = float(get_scape_velocity()) / float(maxIterations);
+    }
 
     // initialize red segments
     for (int i = 0; i < MAX_SEGMENTS; i++) {
         if (i >= redSegmentsSize) {
             break;
         }
-    
+
         redSegments[i] = Segment(colors[i].x, colors[i].y, colors[i].z);
     }
 

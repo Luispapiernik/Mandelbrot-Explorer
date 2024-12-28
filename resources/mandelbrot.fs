@@ -30,6 +30,7 @@ uniform int redSegmentsSize;
 uniform int greenSegmentsSize;
 uniform int blueSegmentsSize;
 uniform int invertColor;
+uniform int smoothVelocity;
 uniform vec3 colors[30];
 
 out vec4 finalFragColor;
@@ -126,7 +127,12 @@ float get_smooth_scape_velocity() {
 
 void main()
 {
-    float t = get_scape_velocity() / float(maxIterations);
+    float t;
+    if (smoothVelocity == 1) {
+        t = get_smooth_scape_velocity() / float(maxIterations);
+    } else {
+        t = get_scape_velocity() / float(maxIterations);
+    }
 
     // initialize red segments
     for (int i = 0; i < redSegmentsSize; i++) {
