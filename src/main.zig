@@ -297,6 +297,9 @@ const ColorManager = struct {
 };
 
 const MandelbrotArgs = struct {
+    i: i32,
+    j: i32,
+
     x: f32,
     y: f32,
 
@@ -304,8 +307,48 @@ const MandelbrotArgs = struct {
 };
 
 fn mandelbrotWorker(args: *MandelbrotArgs) void {
-    std.debug.print("Calculating scape velocity for ({}, {})\n", .{ args.x, args.y });
-    args.scapeVelocity = 31415926;
+    var current_x: f32 = 0.0;
+    var current_y: f32 = 0.0;
+
+    var x2: f32 = 0.0;
+    var y2: f32 = 0.0;
+
+    for (0..255) |i| {
+        x2 = current_x * current_x;
+        y2 = current_y * current_y;
+
+        args.scapeVelocity = @intCast(i);
+        if (x2 + y2 > 4.0) {
+            break;
+        }
+
+        current_y = 2.0 * current_x * current_y + args.y;
+        current_x = x2 - y2 + args.x;
+    }
+}
+
+fn calculate_escape_velocity(x: f32, y: f32) i32 {
+    var current_x: f32 = 0.0;
+    var current_y: f32 = 0.0;
+    var escape_velocity: i32 = 0;
+
+    var x2: f32 = 0.0;
+    var y2: f32 = 0.0;
+
+    for (0..255) |i| {
+        x2 = current_x * current_x;
+        y2 = current_y * current_y;
+
+        escape_velocity = @intCast(i);
+        if (x2 + y2 > 4.0) {
+            break;
+        }
+
+        current_y = 2.0 * current_x * current_y + y;
+        current_x = x2 - y2 + x;
+    }
+
+    return escape_velocity;
 }
 
 pub fn main() anyerror!void {
@@ -371,37 +414,11 @@ pub fn main() anyerror!void {
     var colorManager = ColorManager.init(mandelbrotShader);
     colorManager.setColor(0, mandelbrotShader);
 
-    // Threads
-    const numThreads = try std.Thread.getCpuCount();
-    std.log.info("Number of logical processors available: {d}", .{numThreads});
-
-    // const toInstantiate = @min(1, numThreads);
-    const toInstantiate = 1;
-    var threads: [toInstantiate]std.Thread = undefined;
-
-    var args: [toInstantiate]MandelbrotArgs = undefined;
-
-    for (0..toInstantiate) |i| {
-        args[i] = MandelbrotArgs{ .x = 0, .y = 0, .scapeVelocity = undefined };
-        threads[i] = try std.Thread.spawn(
-            std.Thread.SpawnConfig{},
-            mandelbrotWorker,
-            .{&args[i]},
-        );
-    }
-
-    for (threads) |thread| {
-        thread.join();
-    }
-
-    for (args) |arg| {
-        std.log.info("Scape velocity: {d}", .{arg.scapeVelocity});
-    }
-
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         const mouseWheelDelta: rl.Vector2 = rl.getMouseWheelMoveV();
         const mousePosition = rl.getMousePosition();
+        // std.debug.print("{} {}\n", .{ mousePosition.x, mousePosition.y });
 
         // This are the position of the mouse mapped to the coordinate system
         // where the vertical axis goes from -1 to 1 bottom up, and horizontal, goes from -1 to 1 left to right
@@ -505,16 +522,77 @@ pub fn main() anyerror!void {
         defer rl.endDrawing();
 
         rl.clearBackground(rl.Color.ray_white);
-        {
-            rl.beginShaderMode(mandelbrotShader);
-            defer rl.endShaderMode();
+        // {
+        //     rl.beginShaderMode(mandelbrotShader);
+        //     defer rl.endShaderMode();
 
-            rl.drawRectangle(
-                0,
-                0,
-                settings.screenWidth,
-                settings.screenHeight,
-                rl.Color.ray_white,
+        //     rl.drawRectangle(
+        //         0,
+        //         0,
+        //         settings.screenWidth,
+        //         settings.screenHeight,
+        //         rl.Color.ray_white,
+        //     );
+        // }
+
+        // Threads
+        const numThreads = try std.Thread.getCpuCount();
+        std.log.info("Number of logical processors available: {d}", .{numThreads});
+
+        // const toInstantiate = @min(1, numThreads);
+        const toInstantiate = 100;
+        var threads: [toInstantiate]std.Thread = undefined;
+
+        var args: [toInstantiate]MandelbrotArgs = undefined;
+
+        var x: f32 = undefined;
+        var y: f32 = undefined;
+        for (0..@intCast(settings.screenWidth)) |i| {
+            for (0..@intCast(settings.screenHeight)) |j| {
+                // Transform i to (-1, 1) and j to (-1, 1)
+                x = (@as(f32, @floatFromInt(i)) - @as(f32, @floatFromInt(settings.screenWidth)) / 2) / (@as(f32, @floatFromInt(settings.screenWidth)) / 2);
+                y = -1.0 * (@as(f32, @floatFromInt(j)) - @as(f32, @floatFromInt(settings.screenHeight)) / 2) / (@as(f32, @floatFromInt(settings.screenHeight)) / 2);
+
+                // Take into account the aspect ratio
+                if (settings.screenHeight > settings.screenWidth) {
+                    x = x * @as(f32, @floatFromInt(settings.screenWidth)) / @as(f32, @floatFromInt(settings.screenHeight));
+                } else {
+                    y = y * @as(f32, @floatFromInt(settings.screenHeight)) / @as(f32, @floatFromInt(settings.screenWidth));
+                }
+
+                // Take into account translation and zoom
+                x = visor.xi + (visor.xf - visor.xi) * (x + 1) / 2;
+                y = visor.yi + (visor.yf - visor.yi) * (y + 1) / 2;
+
+                args[i] = MandelbrotArgs{
+                    .x = x,
+                    .y = y,
+                    .scapeVelocity = undefined,
+                    .i = @intCast(i),
+                    .j = @intCast(j),
+                };
+                threads[i] = try std.Thread.spawn(
+                    std.Thread.SpawnConfig{},
+                    mandelbrotWorker,
+                    .{&args[i]},
+                );
+            }
+        }
+
+        for (threads) |thread| {
+            thread.join();
+        }
+
+        for (args) |arg| {
+            rl.drawPixel(
+                arg.i,
+                arg.j,
+                rl.Color{
+                    .r = @rem(@as(u8, @intCast(arg.scapeVelocity)), 255),
+                    .g = 0,
+                    .b = 0,
+                    .a = 255,
+                },
             );
         }
 
