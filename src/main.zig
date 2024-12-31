@@ -343,7 +343,7 @@ pub fn main() anyerror!void {
     // TODO: Actually the web version works also for desktop, not changing
     // it still because in the future we might want to use specific  features on version 100
     var vertexShaderName: ?[*:0]const u8 = "resources/mandelbrot.vs";
-    var fragmentShaderName: ?[*:0]const u8 = "resources/mandelbrot.fs";
+    var fragmentShaderName: ?[*:0]const u8 = "resources/perturbation.fs";
     if (builtin.target.isWasm()) {
         vertexShaderName = "resources/mandelbrot_web.vs";
         fragmentShaderName = "resources/mandelbrot_web.fs";
@@ -398,6 +398,10 @@ pub fn main() anyerror!void {
         std.log.info("Scape velocity: {d}", .{arg.scapeVelocity});
     }
 
+    const rows = 25;
+    const columns = 25;
+    var referencePoints: [rows * columns]rl.Vector2 = undefined;
+    const referencePointsLoc = rl.getShaderLocation(mandelbrotShader, "referencePoints");
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         const mouseWheelDelta: rl.Vector2 = rl.getMouseWheelMoveV();
@@ -499,6 +503,27 @@ pub fn main() anyerror!void {
 
         // Copy coordinate params to the shader
         visor.loadView(mandelbrotShader);
+
+        const xLength = (visor.xf - visor.xi) / columns;
+        const yLength = (visor.yf - visor.yi) / rows;
+        for (0..rows) |i| { // For Y
+            for (0..columns) |j| { // For X
+                referencePoints[i * columns + j] = rl.Vector2{
+                    .x = visor.xi + (2 * @as(f32, @floatFromInt(@as(i32, @intCast(j)))) + 1) * xLength / 2,
+                    .y = visor.yi + (2 * @as(f32, @floatFromInt(@as(i32, @intCast(i)))) + 1) * yLength / 2,
+                };
+
+                // referencePoints[i * columns + j] = rl.Vector2{ .x = 0, .y = 0 };
+            }
+        }
+
+        rl.setShaderValueV(
+            mandelbrotShader,
+            referencePointsLoc,
+            &referencePoints,
+            rl.ShaderUniformDataType.shader_uniform_vec2,
+            rows * columns,
+        );
 
         // Draw
         rl.beginDrawing();
