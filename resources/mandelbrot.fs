@@ -152,7 +152,8 @@ void main()
         blueSegments[i] = Segment(colors[realIndex].x, colors[realIndex].y, colors[realIndex].z);
     }
 
-    float colorParameter = invertColor == 1 ? t : 1 - t;
+    // 1 is true, -1 is false
+    float colorParameter = invertColor == 1 ? 1 - t : t;
 
     vec3 color = vec3(
         interpolate_10(colorParameter, redSegments),

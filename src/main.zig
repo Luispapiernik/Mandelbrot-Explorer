@@ -1,302 +1,19 @@
-const std = @import("std");
-const rl = @import("raylib");
 const builtin = @import("builtin");
-const colorsMaps = @import("colors.zig");
+const std = @import("std");
 
-const GlobalSettings = struct {
+const rl = @import("raylib");
+
+const colors = @import("colors.zig");
+const geometry = @import("geometry.zig");
+const shaders = @import("shaders.zig");
+
+const FALSE: i32 = -1;
+const TRUE: i32 = 1;
+
+pub fn main() anyerror!void {
     // Setting this to cero will start window with monitor width and height
     // but for our coordinates transformation, we need to set it to a fixed value
     // after initialization
-    screenWidth: i32 = 0,
-    screenHeight: i32 = 0,
-    maxIterations: i32 = 100,
-    smoothVelocity: i32 = -1,
-
-    title: [*:0]const u8 = "Mandelbrot Explorer",
-
-    screenWidthLoc: i32,
-    screenHeightLoc: i32,
-    maxIterationsLoc: i32,
-    smoothVelocityLoc: i32,
-
-    pub fn setLocations(self: *GlobalSettings, mandelbrotShader: rl.Shader) void {
-        self.screenWidthLoc = rl.getShaderLocation(
-            mandelbrotShader,
-            "screenWidth",
-        );
-        self.screenHeightLoc = rl.getShaderLocation(
-            mandelbrotShader,
-            "screenHeight",
-        );
-        self.maxIterationsLoc = rl.getShaderLocation(
-            mandelbrotShader,
-            "maxIterations",
-        );
-        self.smoothVelocityLoc = rl.getShaderLocation(
-            mandelbrotShader,
-            "smoothVelocity",
-        );
-    }
-
-    pub fn loadSettings(self: *GlobalSettings, mandelbrotShader: rl.Shader) void {
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.screenWidthLoc,
-            &self.screenWidth,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.screenHeightLoc,
-            &self.screenHeight,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.maxIterationsLoc,
-            &self.maxIterations,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.smoothVelocityLoc,
-            &self.smoothVelocity,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-    }
-
-    pub fn reset(self: *GlobalSettings) void {
-        self.maxIterations = 100;
-        self.smoothVelocity = -1;
-    }
-
-    pub fn showFields(self: *GlobalSettings) void {
-        std.debug.print("screenWidth: {}\n", .{self.screenWidth});
-        std.debug.print("screenHeight: {}\n", .{self.screenHeight});
-        std.debug.print("maxIterations: {}\n", .{self.maxIterations});
-        std.debug.print("screenWidthLoc: {}\n", .{self.screenWidthLoc});
-        std.debug.print("screenHeightLoc: {}\n", .{self.screenHeightLoc});
-        std.debug.print("maxIterationsLoc: {}\n", .{self.maxIterationsLoc});
-    }
-};
-
-const Visor = struct {
-    const initialXI: f32 = -2;
-    const initialXF: f32 = 2;
-    const initialYI: f32 = -2;
-    const initialYF: f32 = 2;
-
-    xi: f32 = Visor.initialXI,
-    xf: f32 = Visor.initialXF,
-    yi: f32 = Visor.initialYI,
-    yf: f32 = Visor.initialYF,
-
-    centerX: f32 = 0,
-    centerY: f32 = 0,
-
-    xiLoc: i32,
-    xfLoc: i32,
-    yiLoc: i32,
-    yfLoc: i32,
-
-    pub fn init(mandelbrotShader: rl.Shader) Visor {
-        const xiLoc = rl.getShaderLocation(mandelbrotShader, "xi");
-        const xfLoc = rl.getShaderLocation(mandelbrotShader, "xf");
-        const yiLoc = rl.getShaderLocation(mandelbrotShader, "yi");
-        const yfLoc = rl.getShaderLocation(mandelbrotShader, "yf");
-
-        return Visor{ .xiLoc = xiLoc, .xfLoc = xfLoc, .yiLoc = yiLoc, .yfLoc = yfLoc };
-    }
-
-    pub fn reset(self: *Visor) void {
-        self.xi = Visor.initialXI;
-        self.xf = Visor.initialXF;
-        self.yi = Visor.initialYI;
-        self.yf = Visor.initialYF;
-        self.centerX = 0;
-        self.centerY = 0;
-    }
-
-    pub fn loadView(self: *Visor, mandelbrotShader: rl.Shader) void {
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.xiLoc,
-            &self.xi,
-            rl.ShaderUniformDataType.shader_uniform_float,
-        );
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.xfLoc,
-            &self.xf,
-            rl.ShaderUniformDataType.shader_uniform_float,
-        );
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.yiLoc,
-            &self.yi,
-            rl.ShaderUniformDataType.shader_uniform_float,
-        );
-        rl.setShaderValue(
-            mandelbrotShader,
-            self.yfLoc,
-            &self.yf,
-            rl.ShaderUniformDataType.shader_uniform_float,
-        );
-    }
-
-    pub fn zoom(self: *Visor, zoomFactor: f32, fixedXCoordinate: f32, fixedYCoordinate: f32) void {
-        const xiCandidate = (self.xi - self.centerX) * zoomFactor + self.centerX;
-        const xfCandidate = (self.xf - self.centerX) * zoomFactor + self.centerX;
-        const yiCandidate = (self.yi - self.centerY) * zoomFactor + self.centerY;
-        const yfCandidate = (self.yf - self.centerY) * zoomFactor + self.centerY;
-
-        // This prevent us from reaching the limit of the precision
-        if (@abs(xfCandidate - xiCandidate) <= 1e-5 or @abs(yfCandidate - yiCandidate) < 1e-5) {
-            return;
-        }
-
-        const fixedXCoordinateVisorSystem = self.xi + (self.xf - self.xi) * (fixedXCoordinate + 1) / 2;
-        const fixedYCoordinateVisorSystem = self.yi + (self.yf - self.yi) * (fixedYCoordinate + 1) / 2;
-
-        self.xi = xiCandidate;
-        self.xf = xfCandidate;
-        self.yi = yiCandidate;
-        self.yf = yfCandidate;
-
-        const fixedXCoordinateZoomed = self.xi + (self.xf - self.xi) * (fixedXCoordinate + 1) / 2;
-        const fixedYCoordinateZoomed = self.yi + (self.yf - self.yi) * (fixedYCoordinate + 1) / 2;
-
-        self.centerX += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
-        self.centerY += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
-
-        self.xi += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
-        self.xf += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
-        self.yi += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
-        self.yf += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
-    }
-
-    pub fn translate(self: *Visor, movFactor: rl.Vector2) void {
-        const xMoveFactor = (self.xf - self.xi) * movFactor.x;
-        const yMoveFactor = (self.yf - self.yi) * movFactor.y;
-
-        self.xi += xMoveFactor;
-        self.xf += xMoveFactor;
-        self.centerX += xMoveFactor;
-
-        self.yi += yMoveFactor;
-        self.yf += yMoveFactor;
-        self.centerY += yMoveFactor;
-    }
-
-    pub fn showParams(self: *Visor) void {
-        std.debug.print("xi: {}\n", .{self.xi});
-        std.debug.print("xf: {}\n", .{self.xf});
-        std.debug.print("yi: {}\n", .{self.yi});
-        std.debug.print("yf: {}\n", .{self.yf});
-        std.debug.print("centerX: {}\n", .{self.centerX});
-        std.debug.print("centerY: {}\n", .{self.centerY});
-        std.debug.print("Difference X: {}\n", .{self.xf - self.xi});
-        std.debug.print("Difference Y: {}\n", .{self.yf - self.yi});
-    }
-};
-
-const ColorManager = struct {
-    colorMap: colorsMaps.colorMap,
-
-    colorsLoc: i32,
-    redSegmentsSizeLoc: i32,
-    greenSegmentsSizeLoc: i32,
-    blueSegmentsSizeLoc: i32,
-    invertColorLoc: i32,
-
-    currentColor: u8 = 0,
-    invertColor: i32 = 1,
-
-    pub fn init(shader: rl.Shader) ColorManager {
-        const colorsLoc = rl.getShaderLocation(shader, "colors");
-        const redSegmentsSizeLoc = rl.getShaderLocation(shader, "redSegmentsSize");
-        const greenSegmentsSizeLoc = rl.getShaderLocation(shader, "greenSegmentsSize");
-        const blueSegmentsSizeLoc = rl.getShaderLocation(shader, "blueSegmentsSize");
-        const invertColorLoc = rl.getShaderLocation(shader, "invertColor");
-
-        return ColorManager{
-            .colorsLoc = colorsLoc,
-            .redSegmentsSizeLoc = redSegmentsSizeLoc,
-            .greenSegmentsSizeLoc = greenSegmentsSizeLoc,
-            .blueSegmentsSizeLoc = blueSegmentsSizeLoc,
-            .invertColorLoc = invertColorLoc,
-            .colorMap = colorsMaps.colorMap{},
-        };
-    }
-
-    pub fn setColor(self: *ColorManager, option: u8, shader: rl.Shader) void {
-        switch (option) {
-            0 => self.colorMap.writeGrayColorMap(),
-            1 => self.colorMap.writeBoneColorMap(),
-            2 => self.colorMap.writeCmrColorMap(),
-            3 => self.colorMap.writeHotColorMap(),
-            4 => self.colorMap.writeHsvColorMap(),
-            5 => self.colorMap.writeJetColorMap(),
-            6 => self.colorMap.writeSpringColorMap(),
-            7 => self.colorMap.writeSummerColorMap(),
-            8 => self.colorMap.writeWinterColorMap(),
-            else => self.colorMap.writeWistiaColorMap(),
-        }
-
-        var colors: [colorsMaps.colorMap.MAX_COLOR_SEGMENTS]rl.Vector3 = self.colorMap.toColorVector();
-
-        const redSegmentsSize: i32 = @intCast(self.colorMap.redSegments);
-        const greenSegmentsSize: i32 = @intCast(self.colorMap.greenSegments);
-        const blueSegmentsSize: i32 = @intCast(self.colorMap.blueSegments);
-
-        rl.setShaderValue(
-            shader,
-            self.redSegmentsSizeLoc,
-            &redSegmentsSize,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValue(
-            shader,
-            self.greenSegmentsSizeLoc,
-            &greenSegmentsSize,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValue(
-            shader,
-            self.blueSegmentsSizeLoc,
-            &blueSegmentsSize,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValue(
-            shader,
-            self.invertColorLoc,
-            &self.invertColor,
-            rl.ShaderUniformDataType.shader_uniform_int,
-        );
-        rl.setShaderValueV(
-            shader,
-            self.colorsLoc,
-            &colors,
-            rl.ShaderUniformDataType.shader_uniform_vec3,
-            colorsMaps.colorMap.MAX_COLOR_SEGMENTS,
-        );
-    }
-
-    pub fn switchToPreviousColor(self: *ColorManager, shader: rl.Shader) void {
-        self.currentColor = if (self.currentColor == 0) 9 else self.currentColor - 1;
-
-        self.setColor(self.currentColor, shader);
-    }
-
-    pub fn switchToNextColor(self: *ColorManager, shader: rl.Shader) void {
-        self.currentColor += 1;
-        self.currentColor %= 10;
-
-        self.setColor(self.currentColor, shader);
-    }
-};
-
-pub fn main() anyerror!void {
     var width: i32 = 0;
     var height: i32 = 0;
 
@@ -313,8 +30,11 @@ pub fn main() anyerror!void {
         .screenHeightLoc = undefined,
         .maxIterationsLoc = undefined,
         .smoothVelocityLoc = undefined,
+        .shader = undefined,
         .screenWidth = width,
         .screenHeight = height,
+        .maxIterations = GlobalSettings.DEFAULT_MAX_ITERATIONS,
+        .smoothVelocity = FALSE,
     };
 
     const configFlags: rl.ConfigFlags = rl.ConfigFlags{ .msaa_4x_hint = true, .fullscreen_mode = false };
@@ -328,38 +48,19 @@ pub fn main() anyerror!void {
     settings.screenWidth = rl.getScreenWidth();
     settings.screenHeight = rl.getScreenHeight();
 
-    // TODO: Actually the web version works also for desktop, not changing
-    // it still because in the future we might want to use specific  features on version 100
-    var vertexShaderName: ?[*:0]const u8 = "resources/mandelbrot.vs";
-    var fragmentShaderName: ?[*:0]const u8 = "resources/mandelbrot.fs";
-    if (builtin.target.isWasm()) {
-        vertexShaderName = "resources/mandelbrot_web.vs";
-        fragmentShaderName = "resources/mandelbrot_web.fs";
-    }
-    const mandelbrotShader: rl.Shader = rl.loadShader(vertexShaderName, fragmentShaderName);
+    const mandelbrotShader: rl.Shader = shaders.loadMandelbrotShader();
     defer rl.unloadShader(mandelbrotShader);
 
-    const camera = rl.Camera3D{
-        .position = rl.Vector3{ .x = 0, .y = 0, .z = 2 },
-        .target = rl.Vector3{ .x = 0, .y = 0, .z = 0 },
-        .up = rl.Vector3{ .x = 0, .y = 1, .z = 0 },
-        .fovy = 45.0,
-        .projection = rl.CameraProjection.camera_perspective,
-    };
-    const mvp = rl.getCameraMatrix(camera);
-    const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
-    rl.setShaderValueMatrix(mandelbrotShader, mvpLoc, mvp);
+    var visor = geometry.Visor.init(mandelbrotShader);
+    visor.loadView();
 
-    var visor = Visor.init(mandelbrotShader);
-    visor.loadView(mandelbrotShader);
+    settings.setSettingsLocations(mandelbrotShader);
+    settings.loadSettings();
 
-    settings.setLocations(mandelbrotShader);
-    settings.loadSettings(mandelbrotShader);
+    var colorManager = colors.ColorManager.init(mandelbrotShader);
+    colorManager.setColor(0);
 
-    var colorManager = ColorManager.init(mandelbrotShader);
-    colorManager.setColor(0, mandelbrotShader);
-
-    rl.setTargetFPS(60);
+    rl.setTargetFPS(GlobalSettings.FPS);
     while (!rl.windowShouldClose()) {
         const mouseWheelDelta: rl.Vector2 = rl.getMouseWheelMoveV();
         const mousePosition = rl.getMousePosition();
@@ -372,15 +73,15 @@ pub fn main() anyerror!void {
         // Color inputs
         if (rl.isKeyDown(rl.KeyboardKey.key_c)) {
             if (rl.isKeyPressed(rl.KeyboardKey.key_left)) {
-                colorManager.switchToPreviousColor(mandelbrotShader);
+                colorManager.switchToPreviousColor();
             } else if (rl.isKeyPressed(rl.KeyboardKey.key_right)) {
-                colorManager.switchToNextColor(mandelbrotShader);
+                colorManager.switchToNextColor();
             } else if (rl.isKeyPressed(rl.KeyboardKey.key_i)) {
                 colorManager.invertColor *= -1;
-                colorManager.setColor(colorManager.currentColor, mandelbrotShader);
+                colorManager.setColor(colorManager.currentColor);
             } else if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
                 colorManager.currentColor = 0;
-                colorManager.setColor(colorManager.currentColor, mandelbrotShader);
+                colorManager.setColor(colorManager.currentColor);
             }
         }
 
@@ -440,45 +141,119 @@ pub fn main() anyerror!void {
         if (rl.isKeyDown(rl.KeyboardKey.key_i)) {
             if (rl.isKeyPressed(rl.KeyboardKey.key_s)) {
                 settings.smoothVelocity *= -1;
-                settings.loadSettings(mandelbrotShader);
+                settings.loadSettings();
             }
 
             if (rl.isKeyDown(rl.KeyboardKey.key_left)) {
                 settings.maxIterations = if (settings.maxIterations > 10) settings.maxIterations - 10 else 1;
-                settings.loadSettings(mandelbrotShader);
+                settings.loadSettings();
             }
             if (rl.isKeyDown(rl.KeyboardKey.key_right)) {
                 settings.maxIterations += 10;
-                settings.loadSettings(mandelbrotShader);
+                settings.loadSettings();
             }
 
             if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
                 settings.reset();
-                settings.loadSettings(mandelbrotShader);
+                settings.loadSettings();
             }
         }
 
         // Copy coordinate params to the shader
-        visor.loadView(mandelbrotShader);
+        visor.loadView();
 
         // Draw
         rl.beginDrawing();
         defer rl.endDrawing();
 
         rl.clearBackground(rl.Color.ray_white);
-        {
-            rl.beginShaderMode(mandelbrotShader);
-            defer rl.endShaderMode();
-
-            rl.drawRectangle(
-                0,
-                0,
-                settings.screenWidth,
-                settings.screenHeight,
-                rl.Color.ray_white,
-            );
-        }
+        shaders.executeShader(
+            mandelbrotShader,
+            settings.screenWidth,
+            settings.screenHeight,
+        );
 
         rl.drawFPS(10, 10);
     }
 }
+
+const GlobalSettings = struct {
+    const DEFAULT_MAX_ITERATIONS: i32 = 100;
+    const FPS: i32 = 60;
+
+    title: [*:0]const u8 = "Mandelbrot Explorer",
+
+    shader: rl.Shader,
+
+    screenWidth: i32,
+    screenHeight: i32,
+    maxIterations: i32,
+    smoothVelocity: i32,
+
+    screenWidthLoc: i32,
+    screenHeightLoc: i32,
+    maxIterationsLoc: i32,
+    smoothVelocityLoc: i32,
+
+    pub fn setSettingsLocations(self: *GlobalSettings, shader: rl.Shader) void {
+        self.shader = shader;
+
+        self.screenWidthLoc = rl.getShaderLocation(
+            shader,
+            "screenWidth",
+        );
+        self.screenHeightLoc = rl.getShaderLocation(
+            shader,
+            "screenHeight",
+        );
+        self.maxIterationsLoc = rl.getShaderLocation(
+            shader,
+            "maxIterations",
+        );
+        self.smoothVelocityLoc = rl.getShaderLocation(
+            shader,
+            "smoothVelocity",
+        );
+    }
+
+    pub fn loadSettings(self: *GlobalSettings) void {
+        rl.setShaderValue(
+            self.shader,
+            self.screenWidthLoc,
+            &self.screenWidth,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            self.shader,
+            self.screenHeightLoc,
+            &self.screenHeight,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            self.shader,
+            self.maxIterationsLoc,
+            &self.maxIterations,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            self.shader,
+            self.smoothVelocityLoc,
+            &self.smoothVelocity,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+    }
+
+    pub fn reset(self: *GlobalSettings) void {
+        self.maxIterations = GlobalSettings.DEFAULT_MAX_ITERATIONS;
+        self.smoothVelocity = FALSE;
+
+        self.loadSettings();
+    }
+
+    pub fn showFields(self: *GlobalSettings) void {
+        std.debug.print("screenWidth: {}\n", .{self.screenWidth});
+        std.debug.print("screenHeight: {}\n", .{self.screenHeight});
+        std.debug.print("maxIterations: {}\n", .{self.maxIterations});
+        std.debug.print("smoothVelocity: {}\n", .{self.smoothVelocity});
+    }
+};

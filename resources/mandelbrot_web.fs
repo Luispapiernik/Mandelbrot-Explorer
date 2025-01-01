@@ -300,7 +300,7 @@ void main()
         
     }
 
-    float colorParameter = invertColor == 1 ? t : float(1) - t;
+    float colorParameter = invertColor == 1 ? float(1) - t : t;
 
     vec3 color = vec3(
         interpolate_10(colorParameter, redSegments),

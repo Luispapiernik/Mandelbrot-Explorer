@@ -1,17 +1,20 @@
-const rl = @import("raylib");
 const std = @import("std");
 
-// TODO: This need to be highly improved
-pub const colorMap = struct {
+const rl = @import("raylib");
+
+const FALSE: i32 = -1;
+const TRUE: i32 = 1;
+
+pub const ColorMap = struct {
     pub const MAX_COLOR_SEGMENTS: u8 = 30;
 
     redSegments: u8 = undefined,
     greenSegments: u8 = undefined,
     blueSegments: u8 = undefined,
 
-    colorSegments: [30][3]f32 = .{.{0} ** 3} ** MAX_COLOR_SEGMENTS,
+    colorSegments: [ColorMap.MAX_COLOR_SEGMENTS][3]f32 = .{.{0} ** 3} ** ColorMap.MAX_COLOR_SEGMENTS,
 
-    pub fn writeBoneColorMap(self: *colorMap) void {
+    pub fn writeBoneColorMap(self: *ColorMap) void {
         self.redSegments = 3;
         self.greenSegments = 4;
         self.blueSegments = 3;
@@ -31,7 +34,7 @@ pub const colorMap = struct {
         self.colorSegments[9] = [3]f32{ 1.0, 1.0, 1.0 };
     }
 
-    pub fn writeGrayColorMap(self: *colorMap) void {
+    pub fn writeGrayColorMap(self: *ColorMap) void {
         self.redSegments = 2;
         self.greenSegments = 2;
         self.blueSegments = 2;
@@ -47,7 +50,7 @@ pub const colorMap = struct {
         self.colorSegments[5] = [3]f32{ 1.0, 1.0, 1.0 };
     }
 
-    pub fn writeHotColorMap(self: *colorMap) void {
+    pub fn writeHotColorMap(self: *ColorMap) void {
         self.redSegments = 3;
         self.greenSegments = 4;
         self.blueSegments = 3;
@@ -67,7 +70,7 @@ pub const colorMap = struct {
         self.colorSegments[9] = [3]f32{ 1.0, 1.0, 1.0 };
     }
 
-    pub fn writeHsvColorMap(self: *colorMap) void {
+    pub fn writeHsvColorMap(self: *ColorMap) void {
         self.redSegments = 10;
         self.greenSegments = 7;
         self.blueSegments = 7;
@@ -101,7 +104,7 @@ pub const colorMap = struct {
         self.colorSegments[23] = [3]f32{ 1.0, 0.09375, 0.09375 };
     }
 
-    pub fn writeJetColorMap(self: *colorMap) void {
+    pub fn writeJetColorMap(self: *ColorMap) void {
         self.redSegments = 5;
         self.greenSegments = 6;
         self.blueSegments = 5;
@@ -127,7 +130,7 @@ pub const colorMap = struct {
         self.colorSegments[15] = [3]f32{ 1.0, 0.0, 0.0 };
     }
 
-    pub fn writeSpringColorMap(self: *colorMap) void {
+    pub fn writeSpringColorMap(self: *ColorMap) void {
         self.redSegments = 2;
         self.greenSegments = 2;
         self.blueSegments = 2;
@@ -143,7 +146,7 @@ pub const colorMap = struct {
         self.colorSegments[5] = [3]f32{ 1.0, 0.0, 0.0 };
     }
 
-    pub fn writeSummerColorMap(self: *colorMap) void {
+    pub fn writeSummerColorMap(self: *ColorMap) void {
         self.redSegments = 2;
         self.greenSegments = 2;
         self.blueSegments = 2;
@@ -159,7 +162,7 @@ pub const colorMap = struct {
         self.colorSegments[5] = [3]f32{ 1.0, 0.4, 0.4 };
     }
 
-    pub fn writeWinterColorMap(self: *colorMap) void {
+    pub fn writeWinterColorMap(self: *ColorMap) void {
         self.redSegments = 2;
         self.greenSegments = 2;
         self.blueSegments = 2;
@@ -175,7 +178,7 @@ pub const colorMap = struct {
         self.colorSegments[5] = [3]f32{ 1.0, 0.5, 0.5 };
     }
 
-    pub fn writeCmrColorMap(self: *colorMap) void {
+    pub fn writeCmrColorMap(self: *ColorMap) void {
         self.redSegments = 9;
         self.greenSegments = 9;
         self.blueSegments = 9;
@@ -212,7 +215,7 @@ pub const colorMap = struct {
         self.colorSegments[26] = [3]f32{ 1.000, 1.00, 1.00 };
     }
 
-    pub fn writeWistiaColorMap(self: *colorMap) void {
+    pub fn writeWistiaColorMap(self: *ColorMap) void {
         self.redSegments = 5;
         self.greenSegments = 5;
         self.blueSegments = 5;
@@ -237,7 +240,7 @@ pub const colorMap = struct {
         self.colorSegments[14] = [3]f32{ 1.0, 0.0, 0.0 };
     }
 
-    pub fn toColorVector(self: *colorMap) [MAX_COLOR_SEGMENTS]rl.Vector3 {
+    pub fn toColorVector(self: *ColorMap) [MAX_COLOR_SEGMENTS]rl.Vector3 {
         var colorVector: [MAX_COLOR_SEGMENTS]rl.Vector3 = undefined;
 
         for (0..self.redSegments + self.greenSegments + self.blueSegments) |index| {
@@ -248,5 +251,103 @@ pub const colorMap = struct {
             };
         }
         return colorVector;
+    }
+};
+
+pub const ColorManager = struct {
+    colorMap: ColorMap,
+    shader: rl.Shader,
+
+    colorsLoc: i32,
+    redSegmentsSizeLoc: i32,
+    greenSegmentsSizeLoc: i32,
+    blueSegmentsSizeLoc: i32,
+    invertColorLoc: i32,
+
+    currentColor: u8 = 0,
+    invertColor: i32 = FALSE,
+
+    pub fn init(shader: rl.Shader) ColorManager {
+        const colorsLoc = rl.getShaderLocation(shader, "colors");
+        const redSegmentsSizeLoc = rl.getShaderLocation(shader, "redSegmentsSize");
+        const greenSegmentsSizeLoc = rl.getShaderLocation(shader, "greenSegmentsSize");
+        const blueSegmentsSizeLoc = rl.getShaderLocation(shader, "blueSegmentsSize");
+        const invertColorLoc = rl.getShaderLocation(shader, "invertColor");
+
+        return ColorManager{
+            .colorsLoc = colorsLoc,
+            .redSegmentsSizeLoc = redSegmentsSizeLoc,
+            .greenSegmentsSizeLoc = greenSegmentsSizeLoc,
+            .blueSegmentsSizeLoc = blueSegmentsSizeLoc,
+            .invertColorLoc = invertColorLoc,
+            .colorMap = ColorMap{},
+            .shader = shader,
+        };
+    }
+
+    pub fn setColor(self: *ColorManager, option: u8) void {
+        switch (option) {
+            0 => self.colorMap.writeGrayColorMap(),
+            1 => self.colorMap.writeBoneColorMap(),
+            2 => self.colorMap.writeCmrColorMap(),
+            3 => self.colorMap.writeHotColorMap(),
+            4 => self.colorMap.writeHsvColorMap(),
+            5 => self.colorMap.writeJetColorMap(),
+            6 => self.colorMap.writeSpringColorMap(),
+            7 => self.colorMap.writeSummerColorMap(),
+            8 => self.colorMap.writeWinterColorMap(),
+            else => self.colorMap.writeWistiaColorMap(),
+        }
+
+        var colors: [ColorMap.MAX_COLOR_SEGMENTS]rl.Vector3 = self.colorMap.toColorVector();
+
+        const redSegmentsSize: i32 = @intCast(self.colorMap.redSegments);
+        const greenSegmentsSize: i32 = @intCast(self.colorMap.greenSegments);
+        const blueSegmentsSize: i32 = @intCast(self.colorMap.blueSegments);
+
+        rl.setShaderValue(
+            self.shader,
+            self.redSegmentsSizeLoc,
+            &redSegmentsSize,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            self.shader,
+            self.greenSegmentsSizeLoc,
+            &greenSegmentsSize,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            self.shader,
+            self.blueSegmentsSizeLoc,
+            &blueSegmentsSize,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValue(
+            self.shader,
+            self.invertColorLoc,
+            &self.invertColor,
+            rl.ShaderUniformDataType.shader_uniform_int,
+        );
+        rl.setShaderValueV(
+            self.shader,
+            self.colorsLoc,
+            &colors,
+            rl.ShaderUniformDataType.shader_uniform_vec3,
+            ColorMap.MAX_COLOR_SEGMENTS,
+        );
+    }
+
+    pub fn switchToPreviousColor(self: *ColorManager) void {
+        self.currentColor = if (self.currentColor == 0) 9 else self.currentColor - 1;
+
+        self.setColor(self.currentColor);
+    }
+
+    pub fn switchToNextColor(self: *ColorManager) void {
+        self.currentColor += 1;
+        self.currentColor %= 10;
+
+        self.setColor(self.currentColor);
     }
 };
