@@ -1,10 +1,21 @@
 const rl = @import("raylib");
+const rg = @import("raygui");
 
 const colors = @import("colors.zig");
 const geometry = @import("geometry.zig");
 const globalSettings = @import("settings.zig");
 
-pub fn processInput(
+pub fn processEvents(
+    settings: *globalSettings.GlobalSettings,
+    colorManager: *colors.ColorManager,
+    visor: *geometry.Visor,
+) void {
+    _ = rg.guiLabel(.{ .height = 300, .width = 300, .x = 300, .y = 300 }, "Hello, World!");
+    _ = rg.guiButton(.{ .height = 100, .width = 100, .x = 10, .y = 10 }, "Click me!");
+    nicheInputHandler(settings, colorManager, visor);
+}
+
+fn nicheInputHandler(
     settings: *globalSettings.GlobalSettings,
     colorManager: *colors.ColorManager,
     visor: *geometry.Visor,

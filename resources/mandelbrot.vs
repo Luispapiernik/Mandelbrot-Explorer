@@ -1,5 +1,9 @@
 #version 330 core
 
+precision highp float;
+precision highp vec2;
+precision highp vec4;
+
 // Input attributes from Raylib Mesh/ From vertex attributes
 in vec3 vertexPosition;
 in vec4 vertexColor;

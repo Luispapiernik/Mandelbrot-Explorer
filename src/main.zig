@@ -5,13 +5,11 @@ const rl = @import("raylib");
 const rg = @import("raygui");
 
 const colors = @import("colors.zig");
+const constants = @import("constants.zig");
 const geometry = @import("geometry.zig");
-const inputHandler = @import("input.zig");
+const handler = @import("handler.zig");
 const settings = @import("settings.zig");
 const shaders = @import("shaders.zig");
-
-const FALSE: i32 = -1;
-const TRUE: i32 = 1;
 
 pub fn main() anyerror!void {
     // Setting this to cero will start window with monitor width and height
@@ -36,12 +34,12 @@ pub fn main() anyerror!void {
         .shader = undefined,
         .screenWidth = width,
         .screenHeight = height,
-        .maxIterations = settings.DEFAULT_MAX_ITERATIONS,
-        .smoothVelocity = FALSE,
+        .maxIterations = constants.DEFAULT_MAX_ITERATIONS,
+        .smoothVelocity = constants.FALSE,
     };
 
-    const configFlags: rl.ConfigFlags = rl.ConfigFlags{ .msaa_4x_hint = true, .fullscreen_mode = false };
-    rl.setConfigFlags(configFlags);
+    // const configFlags: rl.ConfigFlags = rl.ConfigFlags{ .msaa_4x_hint = true, .fullscreen_mode = false };
+    // rl.setConfigFlags(configFlags);
 
     // TODO: Initializing with zero is introducing a where translation bug in the y axis
     rl.initWindow(globalSettings.screenWidth, globalSettings.screenHeight, globalSettings.title);
@@ -61,17 +59,22 @@ pub fn main() anyerror!void {
     globalSettings.loadSettings();
 
     var colorManager = colors.ColorManager.init(shader);
-    colorManager.setColor(0);
+    colorManager.setColor(colorManager.currentColor);
 
-    rl.setTargetFPS(settings.FPS);
+    const events = std.fifo.LinearFifo(
+        constants.Event,
+        std.fifo.LinearFifoBufferType.Dynamic,
+    ).init(std.heap.page_allocator);
+    defer events.deinit();
+
+    rl.setTargetFPS(constants.FPS);
     while (!rl.windowShouldClose()) {
-        inputHandler.processInput(
+        handler.processEvents(
             &globalSettings,
             &colorManager,
             &visor,
         );
 
-        // Draw
         rl.beginDrawing();
         defer rl.endDrawing();
 

@@ -2,8 +2,7 @@ const std = @import("std");
 
 const rl = @import("raylib");
 
-const FALSE: i32 = -1;
-const TRUE: i32 = 1;
+const constants = @import("constants.zig");
 
 pub const ColorMap = struct {
     pub const MAX_COLOR_SEGMENTS: u8 = 30;
@@ -264,8 +263,8 @@ pub const ColorManager = struct {
     blueSegmentsSizeLoc: i32,
     invertColorLoc: i32,
 
-    currentColor: u8 = 0,
-    invertColor: i32 = FALSE,
+    currentColor: u8 = 4,
+    invertColor: i32 = constants.FALSE,
 
     pub fn init(shader: rl.Shader) ColorManager {
         const colorsLoc = rl.getShaderLocation(shader, "colors");

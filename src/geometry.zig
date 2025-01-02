@@ -115,6 +115,8 @@ pub const Visor = struct {
         self.xf += fixedXCoordinateVisorSystem - fixedXCoordinateZoomed;
         self.yi += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
         self.yf += fixedYCoordinateVisorSystem - fixedYCoordinateZoomed;
+
+        self.showParams();
     }
 
     pub fn translate(self: *Visor, movFactor: rl.Vector2) void {

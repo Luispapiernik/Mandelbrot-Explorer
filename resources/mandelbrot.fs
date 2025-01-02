@@ -1,5 +1,9 @@
 #version 330 core
 
+precision highp float;
+precision highp vec2;
+precision highp vec4;
+
 #define DEFINE_INTERPOLATE_FUNCTION(N)                         \
 float interpolate_##N(float x, Segment segments[N]) {          \
     for (int i = 0; i < N - 1; i++) {                          \

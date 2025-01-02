@@ -14,5 +14,6 @@ Then in `index.js` in the function `run(args=arguments_)` in the first line copy
 
 # TODO
 1. Improve input handler.
-2. Improve color maps generations
-3. UI with help and controls
+2. Improve color maps generations.
+3. UI with help and controls.
+4. Implement infinite zoom.

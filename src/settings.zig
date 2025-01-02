@@ -1,11 +1,7 @@
 const std = @import("std");
 
 const rl = @import("raylib");
-
-const FALSE: i32 = -1;
-const TRUE: i32 = 1;
-pub const DEFAULT_MAX_ITERATIONS: i32 = 100;
-pub const FPS: i32 = 60;
+const constants = @import("constants.zig");
 
 pub const GlobalSettings = struct {
     title: [*:0]const u8 = "Mandelbrot Explorer",
@@ -71,8 +67,8 @@ pub const GlobalSettings = struct {
     }
 
     pub fn reset(self: *GlobalSettings) void {
-        self.maxIterations = DEFAULT_MAX_ITERATIONS;
-        self.smoothVelocity = FALSE;
+        self.maxIterations = constants.DEFAULT_MAX_ITERATIONS;
+        self.smoothVelocity = constants.FALSE;
     }
 
     pub fn showFields(self: *GlobalSettings) void {
