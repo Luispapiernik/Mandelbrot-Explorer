@@ -17,3 +17,4 @@ Then in `index.js` in the function `run(args=arguments_)` in the first line copy
 2. Improve color maps generations.
 3. UI with help and controls.
 4. Implement infinite zoom.
+5. Implement the sqrt function for double double arithmetic

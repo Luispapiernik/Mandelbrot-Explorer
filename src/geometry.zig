@@ -2,21 +2,36 @@ const std = @import("std");
 
 const rl = @import("raylib");
 
+fn toDDFloat(number: f128) rl.Vector2 {
+    var result: rl.Vector2 = rl.Vector2{ .x = 0.0, .y = 0.0 };
+
+    result.x = @floatCast(number);
+    result.y = @floatCast(number - result.x);
+    return result;
+}
+
 pub const Visor = struct {
-    const initialXI: f32 = -2;
-    const initialXF: f32 = 2;
-    const initialYI: f32 = -2;
-    const initialYF: f32 = 2;
+    const initialXI: i8 = -2;
+    const initialXF: i8 = 2;
+    const initialYI: i8 = -2;
+    const initialYF: i8 = 2;
 
     shader: rl.Shader,
 
-    xi: f32 = Visor.initialXI,
-    xf: f32 = Visor.initialXF,
-    yi: f32 = Visor.initialYI,
-    yf: f32 = Visor.initialYF,
+    xi: f128 = Visor.initialXI,
+    xf: f128 = Visor.initialXF,
+    yi: f128 = Visor.initialYI,
+    yf: f128 = Visor.initialYF,
 
-    centerX: f32 = 0,
-    centerY: f32 = 0,
+    _xi: rl.Vector2 = undefined,
+    _xf: rl.Vector2 = undefined,
+    _yi: rl.Vector2 = undefined,
+    _yf: rl.Vector2 = undefined,
+
+    centerX: f128 = 0,
+    centerY: f128 = 0,
+
+    zoomLevel: f128 = 1,
 
     xiLoc: i32,
     xfLoc: i32,
@@ -60,40 +75,46 @@ pub const Visor = struct {
     }
 
     pub fn loadView(self: *Visor) void {
+        self._xi = toDDFloat(self.xi);
+        self._xf = toDDFloat(self.xf);
+        self._yi = toDDFloat(self.yi);
+        self._yf = toDDFloat(self.yf);
+
         rl.setShaderValue(
             self.shader,
             self.xiLoc,
-            &self.xi,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            &self._xi,
+            rl.ShaderUniformDataType.shader_uniform_vec2,
         );
         rl.setShaderValue(
             self.shader,
             self.xfLoc,
-            &self.xf,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            &self._xf,
+            rl.ShaderUniformDataType.shader_uniform_vec2,
         );
         rl.setShaderValue(
             self.shader,
             self.yiLoc,
-            &self.yi,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            &self._yi,
+            rl.ShaderUniformDataType.shader_uniform_vec2,
         );
         rl.setShaderValue(
             self.shader,
             self.yfLoc,
-            &self.yf,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            &self._yf,
+            rl.ShaderUniformDataType.shader_uniform_vec2,
         );
     }
 
-    pub fn zoom(self: *Visor, zoomFactor: f32, fixedXCoordinate: f32, fixedYCoordinate: f32) void {
+    pub fn zoom(self: *Visor, zoomFactor: f128, fixedXCoordinate: f128, fixedYCoordinate: f128) void {
+        self.zoomLevel *= (1 / zoomFactor);
         const xiCandidate = (self.xi - self.centerX) * zoomFactor + self.centerX;
         const xfCandidate = (self.xf - self.centerX) * zoomFactor + self.centerX;
         const yiCandidate = (self.yi - self.centerY) * zoomFactor + self.centerY;
         const yfCandidate = (self.yf - self.centerY) * zoomFactor + self.centerY;
 
         // This prevent us from reaching the limit of the precision
-        if (@abs(xfCandidate - xiCandidate) <= 1e-5 or @abs(yfCandidate - yiCandidate) < 1e-5) {
+        if (@abs(xfCandidate - xiCandidate) <= 1e-8 or @abs(yfCandidate - yiCandidate) < 1e-8) {
             return;
         }
 
@@ -141,5 +162,6 @@ pub const Visor = struct {
         std.debug.print("centerY: {}\n", .{self.centerY});
         std.debug.print("xf - xi: {}\n", .{self.xf - self.xi});
         std.debug.print("yf - yi: {}\n", .{self.yf - self.yi});
+        std.debug.print("zoomLevel: {d:.2}\n", .{self.zoomLevel});
     }
 };

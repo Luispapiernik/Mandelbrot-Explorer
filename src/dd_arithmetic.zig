@@ -6,8 +6,12 @@ const DDFloat = struct {
     err: f32,
 };
 
-fn toDDFloat(number: f64) DDFloat {
-    var result: DDFloat = DDFloat{ .x = 0.0, .y = 0.0, .err = 0.0 };
+fn toDDFloat(number: f128) DDFloat {
+    var result: DDFloat = DDFloat{
+        .x = 0.0,
+        .y = 0.0,
+        .err = 0.0,
+    };
 
     result.x = @floatCast(number);
     result.y = @floatCast(number - result.x);
@@ -15,12 +19,12 @@ fn toDDFloat(number: f64) DDFloat {
     return result;
 }
 
-fn toDFloat(ddNumber: DDFloat) f64 {
-    return @as(f64, ddNumber.x) + @as(f64, ddNumber.y);
+fn toDFloat(ddNumber: DDFloat) f128 {
+    return @as(f128, ddNumber.x) + @as(f128, ddNumber.y);
 }
 
 fn split(number: f32) DDFloat {
-    // 8193.0 = 2^14 + 1, a constant used for splitting
+    // 8193.0 = 2^13 + 1, a constant used for splitting
     const splitConstant = 8193.0;
     const temp = splitConstant * number;
     const high = temp - (temp - number);
@@ -95,21 +99,32 @@ pub fn multiply(a: DDFloat, b: DDFloat) DDFloat {
 }
 
 pub fn main() !void {
-    const pi: f64 = std.math.pi;
+    const pi: f128 = std.math.pi;
+    // const pi: f128 = -5.328660963652375179961580286671126e-1;
     std.debug.print("pi: {}\n", .{pi});
 
     const ddPI: DDFloat = toDDFloat(pi);
     std.debug.print("PI: {}\n", .{toDFloat(ddPI)});
 
-    const phi: f64 = std.math.phi;
+    const sPi: f32 = std.math.pi;
+    std.debug.print("pi: {}\n", .{sPi});
+
+    std.debug.print("high: {}\n", .{ddPI.x});
+    std.debug.print("low: {}\n", .{ddPI.y});
+
+    const phi: f128 = std.math.phi;
     std.debug.print("phi: {}\n", .{phi});
 
     const ddPhi: DDFloat = toDDFloat(phi);
     std.debug.print("PHI: {}\n", .{toDFloat(ddPhi)});
 
+    std.debug.print("high: {}\n", .{ddPhi.x});
+    std.debug.print("low: {}\n", .{ddPhi.y});
+
     const result_2 = sum(ddPI, ddPI);
     std.debug.print("pi + pi: {}\n", .{pi + pi});
     std.debug.print("PI + PI: {}\n", .{toDFloat(result_2)});
+    std.debug.print("sPi+sPi: {}\n", .{sPi + sPi});
 
     const mult_result = multiply(ddPI, ddPI);
     std.debug.print("pi * pi: {}\n", .{pi * pi});
