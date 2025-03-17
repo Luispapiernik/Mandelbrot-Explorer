@@ -1,10 +1,11 @@
 const std = @import("std");
 
 const rl = @import("raylib");
+
 const constants = @import("constants.zig");
 
 pub const GlobalSettings = struct {
-    title: [*:0]const u8 = "Mandelbrot Explorer",
+    title: [:0]const u8 = "Mandelbrot Explorer",
 
     shader: rl.Shader,
 
@@ -44,25 +45,25 @@ pub const GlobalSettings = struct {
             self.shader,
             self.screenWidthLoc,
             &self.screenWidth,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValue(
             self.shader,
             self.screenHeightLoc,
             &self.screenHeight,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValue(
             self.shader,
             self.maxIterationsLoc,
             &self.maxIterations,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValue(
             self.shader,
             self.smoothVelocityLoc,
             &self.smoothVelocity,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
     }
 

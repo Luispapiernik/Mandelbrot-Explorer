@@ -1,10 +1,15 @@
 .{
-    .name = "mandelbrot_explorer",
+    .name = .mandelbrot_explorer,
     .version = "0.0.1",
+    .fingerprint = 0x3370fc6be95bbfde,
     .dependencies = .{
-        .@"raylib-zig" = .{
-            .url = "git+https://github.com/Not-Nik/raylib-zig?ref=devel#de8c2d458516fc971f0859c4473e3381767d2471",
-            .hash = "122058d3ea6318efb819d0bffba630afd1a459fa3a99b4bfe4b680a937d5de04d2fc",
+        .raylib_zig = .{
+            .url = "git+https://github.com/Not-Nik/raylib-zig?ref=devel#5bbafa4f86eb3e3f41a107bbec6b8822e0f87c93",
+            .hash = "raylib_zig-5.6.0-dev-KE8REE0uBQD5Lzuc6qSZPtE5li3iPyU4iGQEMPqOPI11",
+        },
+        .ffmpeg = .{
+            .url = "git+https://github.com/allyourcodebase/ffmpeg#9e9ca0c9358eebb920985c6c2501b60239165038",
+            .hash = "ffmpeg-7.0.1-6-zT7QAyF8CASSBroV4hbEPVXAJPYdW19jqhNtNsbvM9jR",
         },
     },
     .paths = .{""},

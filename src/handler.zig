@@ -29,52 +29,52 @@ fn nicheInputHandler(
     const mouseY = -1.0 * (mousePosition.y - @as(f32, @floatFromInt(settings.screenHeight)) / 2) / (@as(f32, @floatFromInt(settings.screenHeight)) / 2);
 
     // Color inputs
-    if (rl.isKeyDown(rl.KeyboardKey.key_c)) {
-        if (rl.isKeyPressed(rl.KeyboardKey.key_left)) {
+    if (rl.isKeyDown(rl.KeyboardKey.c)) {
+        if (rl.isKeyPressed(rl.KeyboardKey.left)) {
             colorManager.switchToPreviousColor();
-        } else if (rl.isKeyPressed(rl.KeyboardKey.key_right)) {
+        } else if (rl.isKeyPressed(rl.KeyboardKey.right)) {
             colorManager.switchToNextColor();
-        } else if (rl.isKeyPressed(rl.KeyboardKey.key_i)) {
+        } else if (rl.isKeyPressed(rl.KeyboardKey.i)) {
             colorManager.invertColor *= -1;
             colorManager.setColor(colorManager.currentColor);
-        } else if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
+        } else if (rl.isKeyPressed(rl.KeyboardKey.r)) {
             colorManager.currentColor = 0;
             colorManager.setColor(colorManager.currentColor);
         }
     }
 
     // Coordinate transformations
-    if (rl.isKeyDown(rl.KeyboardKey.key_m)) {
+    if (rl.isKeyDown(rl.KeyboardKey.m)) {
         var xDelta: f32 = 0;
         var yDelta: f32 = 0;
         var zoomFactor: f32 = 1;
 
-        if (rl.isKeyDown(rl.KeyboardKey.key_left) or mouseWheelDelta.x > 0) {
-            if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
+        if (rl.isKeyDown(rl.KeyboardKey.left) or mouseWheelDelta.x > 0) {
+            if (rl.isKeyDown(rl.KeyboardKey.z)) {
                 zoomFactor = 1.1;
             } else {
                 xDelta += 0.05;
             }
         }
 
-        if (rl.isKeyDown(rl.KeyboardKey.key_right) or mouseWheelDelta.x < 0) {
-            if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
+        if (rl.isKeyDown(rl.KeyboardKey.right) or mouseWheelDelta.x < 0) {
+            if (rl.isKeyDown(rl.KeyboardKey.z)) {
                 zoomFactor = 0.9;
             } else {
                 xDelta -= 0.05;
             }
         }
 
-        if (rl.isKeyDown(rl.KeyboardKey.key_up) or mouseWheelDelta.y > 0) {
-            if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
+        if (rl.isKeyDown(rl.KeyboardKey.up) or mouseWheelDelta.y > 0) {
+            if (rl.isKeyDown(rl.KeyboardKey.z)) {
                 zoomFactor = 0.9;
             } else {
                 yDelta += 0.05;
             }
         }
 
-        if (rl.isKeyDown(rl.KeyboardKey.key_down) or mouseWheelDelta.y < 0) {
-            if (rl.isKeyDown(rl.KeyboardKey.key_z)) {
+        if (rl.isKeyDown(rl.KeyboardKey.down) or mouseWheelDelta.y < 0) {
+            if (rl.isKeyDown(rl.KeyboardKey.z)) {
                 zoomFactor = 1.1;
             } else {
                 yDelta -= 0.05;
@@ -90,7 +90,7 @@ fn nicheInputHandler(
         });
         visor.zoom(zoomFactor, mouseX, mouseY);
 
-        if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
+        if (rl.isKeyPressed(rl.KeyboardKey.r)) {
             visor.reset();
         }
 
@@ -98,22 +98,22 @@ fn nicheInputHandler(
     }
 
     // Iterations
-    if (rl.isKeyDown(rl.KeyboardKey.key_i)) {
-        if (rl.isKeyPressed(rl.KeyboardKey.key_s)) {
+    if (rl.isKeyDown(rl.KeyboardKey.i)) {
+        if (rl.isKeyPressed(rl.KeyboardKey.s)) {
             settings.smoothVelocity *= -1;
             settings.loadSettings();
         }
 
-        if (rl.isKeyDown(rl.KeyboardKey.key_left)) {
+        if (rl.isKeyDown(rl.KeyboardKey.left)) {
             settings.maxIterations = if (settings.maxIterations > 10) settings.maxIterations - 10 else 1;
             settings.loadSettings();
         }
-        if (rl.isKeyDown(rl.KeyboardKey.key_right)) {
+        if (rl.isKeyDown(rl.KeyboardKey.right)) {
             settings.maxIterations += 10;
             settings.loadSettings();
         }
 
-        if (rl.isKeyPressed(rl.KeyboardKey.key_r)) {
+        if (rl.isKeyPressed(rl.KeyboardKey.r)) {
             settings.reset();
             settings.loadSettings();
         }

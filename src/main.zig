@@ -15,10 +15,11 @@ pub fn main() anyerror!void {
     // Setting this to cero will start window with monitor width and height
     // but for our coordinates transformation, we need to set it to a fixed value
     // after initialization
-    var width: i32 = 0;
-    var height: i32 = 0;
+    var width: i32 = 1000;
+    var height: i32 = 1000;
 
-    if (builtin.target.isWasm()) {
+    // av.FormatContext.open_input;
+    if (builtin.target.os.tag == std.Target.Os.Tag.emscripten) {
         const args = try std.process.argsAlloc(std.heap.c_allocator);
         defer std.process.argsFree(std.heap.c_allocator, args);
 
@@ -41,7 +42,7 @@ pub fn main() anyerror!void {
     // const configFlags: rl.ConfigFlags = rl.ConfigFlags{ .msaa_4x_hint = true, .fullscreen_mode = false };
     // rl.setConfigFlags(configFlags);
 
-    // TODO: Initializing with zero is introducing a where translation bug in the y axis
+    // TODO: Initializing with zero is introducing a weird translation bug in the y axis
     rl.initWindow(globalSettings.screenWidth, globalSettings.screenHeight, globalSettings.title);
     defer rl.closeWindow();
 

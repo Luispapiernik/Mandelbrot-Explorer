@@ -263,7 +263,7 @@ pub const ColorManager = struct {
     blueSegmentsSizeLoc: i32,
     invertColorLoc: i32,
 
-    currentColor: u8 = 4,
+    currentColor: u8 = 1,
     invertColor: i32 = constants.FALSE,
 
     pub fn init(shader: rl.Shader) ColorManager {
@@ -308,31 +308,31 @@ pub const ColorManager = struct {
             self.shader,
             self.redSegmentsSizeLoc,
             &redSegmentsSize,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValue(
             self.shader,
             self.greenSegmentsSizeLoc,
             &greenSegmentsSize,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValue(
             self.shader,
             self.blueSegmentsSizeLoc,
             &blueSegmentsSize,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValue(
             self.shader,
             self.invertColorLoc,
             &self.invertColor,
-            rl.ShaderUniformDataType.shader_uniform_int,
+            rl.ShaderUniformDataType.int,
         );
         rl.setShaderValueV(
             self.shader,
             self.colorsLoc,
             &colors,
-            rl.ShaderUniformDataType.shader_uniform_vec3,
+            rl.ShaderUniformDataType.vec3,
             ColorMap.MAX_COLOR_SEGMENTS,
         );
     }

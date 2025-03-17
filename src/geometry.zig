@@ -34,7 +34,7 @@ pub const Visor = struct {
             .target = rl.Vector3{ .x = 0, .y = 0, .z = 0 },
             .up = rl.Vector3{ .x = 0, .y = 1, .z = 0 },
             .fovy = 45.0,
-            .projection = rl.CameraProjection.camera_perspective,
+            .projection = rl.CameraProjection.perspective,
         };
         const mvp = rl.getCameraMatrix(camera);
         const mvpLoc = rl.getShaderLocation(mandelbrotShader, "mvp");
@@ -64,25 +64,25 @@ pub const Visor = struct {
             self.shader,
             self.xiLoc,
             &self.xi,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            rl.ShaderUniformDataType.float,
         );
         rl.setShaderValue(
             self.shader,
             self.xfLoc,
             &self.xf,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            rl.ShaderUniformDataType.float,
         );
         rl.setShaderValue(
             self.shader,
             self.yiLoc,
             &self.yi,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            rl.ShaderUniformDataType.float,
         );
         rl.setShaderValue(
             self.shader,
             self.yfLoc,
             &self.yf,
-            rl.ShaderUniformDataType.shader_uniform_float,
+            rl.ShaderUniformDataType.float,
         );
     }
 
